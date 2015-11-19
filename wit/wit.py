@@ -192,4 +192,7 @@ test     = formatter.format(testdata, ['obj'], 'hash')
 
 # Make prediction on test dataset and check accuracy
 preds = classifier.predict(test['x'])
-pd.crosstab(preds.argmax(1), test['y'].argmax(1))
+
+pred_class = np.array(levs)[preds.argmax(1)]
+act_class  = np.array(levs)[test['y'].argmax(1)]
+pd.crosstab(pred_class, act_class)
