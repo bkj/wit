@@ -29,11 +29,18 @@ d = filter(lambda x: 'viewtopic' in x['url'], d)
 # Get individual posts
 paths = {
     "www.arguntrader.com"        : ['div', {'class' : 'post'}],
-    "www.remingtonsociety.com"   : ['tr', {'class' : ['row1', 'row2']}], # Should merge like 1, 1, 2, 2, etc
-    "www.henryfirearms.org"      : ['tr', {'class' : ['row1', 'row2']}], # ^^
+    "marauderairrifle.com"       : ['div', {'class' : 'post'}],
+    "204ruger.com"               : ['div', {'class' : 'post'}],
+    "www.rossi-rifleman.com"     : ['div', {'class' : 'post'}],
+    "www.deerhuntingchat.com"    : ['div', {'class' : 'post'}],
+    
     "www.combat-shotgun.com"     : ['div', {'class' : 'post'}],
     "www.newmexicoguntrader.net" : ['div', {'class' : 'post'}],
     "www.silencerforum.com"      : ['div', {'class' : 'post'}],
+    
+    "www.remingtonsociety.com"     : ['tr', {'class' : ['row1', 'row2']}], # Should merge like 1, 1, 2, 2, etc.  Done on line 70 now.
+    "www.henryfirearms.org"        : ['tr', {'class' : ['row1', 'row2']}], # 
+    "calicolightweaponsystems.com" : ['tr', {'class' : ['row1', 'row2']}],
 }
 
 out = {}
@@ -60,7 +67,8 @@ for k,v in out.iteritems():
         })
 
 df = pd.DataFrame(df)
-df.to_csv('csvs/raw_gun.csv')
+df = df[~df['content'].apply(lambda x: 'postbottom' in x)].reset_index()
+df.to_csv('raw_gun.csv')
 
 # -----------------------------------------
 # -- Everything below this is deprecated --
