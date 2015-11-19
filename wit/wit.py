@@ -1,4 +1,5 @@
 # --
+# Formatting / featurizing for Keras input
 
 import numpy as np
 import pandas as pd
@@ -58,9 +59,8 @@ class KerasFormatter():
             tmp = re.sub(' +', ' ', tmp)
             return tmp
 
-
-
 # --
+# Fake dataset generator
 
 import numpy as np
 import pandas as pd
@@ -100,13 +100,14 @@ class FakeData():
         
     def datapoint(self):
         lab = np.random.choice(self.choices)
-        val = getattr(fake, lab)()
+        val = getattr(self.fake, lab)()
         return {"hash" : lab, "obj" : val}
     
     def dataframe(self, size = 1000):
         return pd.DataFrame([self.datapoint() for i in xrange(size)])
 
 # --
+# Neural network string classifier
 
 from keras.models import Sequential
 from keras.layers.core import Dense, Dropout, Activation
@@ -173,17 +174,22 @@ class StringClassifier():
 num_features = 1000
 max_len      = 50
 
-f         = FakeData()
-formatter = KerasFormatter(num_features, max_len)
+# Generate fake dataset
+f    = FakeData()
+data = f.dataframe(size = 5000)
 
-data             = f.dataframe(size = 5000)
+# Format for keras training
+formatter        = KerasFormatter(num_features, max_len)
 train, val, levs = formatter.format_with_val(data, ['obj'], 'hash')
 
-classifier = StringClassifier(train, val, levs, model)
+# Compile and train classifier
+classifier = StringClassifier(train, val, levs)
 classifier.fit()
 
+# Create test dataset
 testdata = f.dataframe(size = 5000)
 test     = formatter.format(testdata, ['obj'], 'hash')
 
+# Make prediction on test dataset and check accuracy
 preds = classifier.predict(test['x'])
 pd.crosstab(preds.argmax(1), test['y'].argmax(1))
