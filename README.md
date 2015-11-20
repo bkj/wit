@@ -25,4 +25,4 @@ and here are two ways we could think about similarity of sets of strings:
 
 ### Software
 
-Prototype code for calculating `syntactic` and `semantic` similarity are included in this repo, under `wit`
+Prototype code for calculating `syntactic` and `semantic` similarity are included in this repo, under `wit`.  `simple-siamese-example.py` gives an example of when these measures are not enough (because two variables have identical levels), and we'd want to implement some higher-order comparison between sets of strings.
