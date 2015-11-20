@@ -65,34 +65,37 @@ class PairwiseData:
     def make_random(self):
         self.random = self.random_pairs(self.df)
         return self.random
-        
-    def make_strat(self):
+    
+    def make_strat(self, neg_prop = 1):
         self.pos   = self.make_pos(self.df)
-        self.neg   = self.make_neg(self.df)
+        self.neg   = self.make_neg(self.df, neg_prop)
         self.strat = pd.concat([self.pos, self.neg])
         return self.strat
-    
-    def make_dstrat(self, neg = True, pos = False, prop = .1):
-        if len(self.strat) == 0:
-            _ = self.make_strat()
-        
-        tmpneg = self.neg.sample(np.floor(prop * self.neg.shape[0])) if neg else self.neg
-        tmppos = self.pos.sample(np.floor(prop * self.pos.shape[0])) if pos else self.pos
-        
-        return pd.concat([tmppos, tmpneg])
         
     def make_pos(self, df):
         print '-- making pos -- '
         tmp = df.groupby(self.keys['hash']).apply(self.random_pairs)
-        tmp = tmp.drop_duplicates().reset_index()
+        # tmp = tmp.drop_duplicates().reset_index()
+        tmp = tmp.reset_index()
         del tmp[self.keys['hash']]
         del tmp['level_1']
         return tmp
-        
-    def make_neg(self, df):
+    
+    # NB : This makes all negative pairs.  Might be better to sample here.
+    def make_neg(self, df, neg_prop = 1):
         print '-- making neg --'
-        tmp = df.groupby(self.keys['id']).apply(self.all_neg_pairs)
-        tmp = tmp.drop_duplicates().reset_index()
+        ids = df[self.keys['id']].sample( np.floor(neg_prop * df.shape[0]) )
+        tmp = df[df.id.apply(lambda x: x in ids)]
+        tmp = tmp.groupby(self.keys['id']).apply(self.all_neg_pairs)
+        # tmp = tmp.drop_duplicates().reset_index()
+        
+        # Don't push the same string apart? I don't know what to do about this.
+        # I think the impact of this is an artifact of the "pseduosiamese"
+        # architecture I'm using, and will be fixed when I incorporate the
+        # actual siamese architecture.
+        # tmp = tmp[tmp.obj1 != tmp2.obj2]
+        tmp = tmp.reset_index()
+        
         del tmp[self.keys['id']]
         del tmp['level_1']
         return tmp

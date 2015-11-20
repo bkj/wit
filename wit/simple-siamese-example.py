@@ -1,6 +1,8 @@
 import pandas as pd
 import urllib2
 
+from matplotlib import pyplot as plt
+
 import sys
 sys.path.append('/Users/BenJohnson/projects/what-is-this/wit/')
 from wit import *
@@ -8,7 +10,7 @@ from wit import *
 # --
 # Helper function for making testing data
 def strat_pairs(df, n_match = 100, n_nonmatch = 10, hash_id = 'hash'):
-    print 'strat_pairs :: starting'
+    print 'strat_pairs -- starting'
     
     out = []
     uh  = df[hash_id].unique()
@@ -42,6 +44,7 @@ def strat_pairs(df, n_match = 100, n_nonmatch = 10, hash_id = 'hash'):
     
     return pd.concat(out)
 
+# Helper function for viewing aggregate similarity between fields
 def make_self_sims(x):
     tmp = x.groupby(['hash1', 'hash2'])['preds']
     sims = pd.DataFrame({
@@ -60,39 +63,55 @@ def make_self_sims(x):
 num_features = 1000 # Character
 max_len      = 150  # Character
 
-# Load data
-url        = 'https://raw.githubusercontent.com/chrisalbon/variable_type_identification_test_datasets/master/datasets_raw/mps_tanzania.csv'
-df         = pd.read_csv(url)
-df['id']   = range(df.shape[0])
-df         = pd.melt(df, id_vars = 'id')
-df.columns = ('id', 'hash', 'obj')
+formatter    = KerasFormatter(num_features, max_len)
+
+# Load and format data
+url          = 'https://raw.githubusercontent.com/chrisalbon/variable_type_identification_test_datasets/master/datasets_raw/ak_bill_actions.csv'
+raw_df       = pd.read_csv(url)
+raw_df['id'] = range(raw_df.shape[0])
+df           = pd.melt(raw_df, id_vars = 'id')
+df.columns   = ('id', 'hash', 'obj')
 
 pairwise_train = PairwiseData(df)
-train_data     = pairwise_train.make_dstrat(prop = 0.05)
+train          = pairwise_train.make_strat(neg_prop = 0.005) # Downsampling negative examples, otherwise negative set is very large
 
 # Format for keras training
-formatter        = KerasFormatter(num_features, max_len)
-train, val, levs = formatter.format_symmetric_with_val(train_data, ['obj1', 'obj2'], 'match', val_prop = .5)
+trn, val, levs = formatter.format_symmetric_with_val(train, ['obj1', 'obj2'], 'match', val_prop = .5)
 
 # Compile and train classifier
-classifier = SiameseClassifier(train, val, levs)
-classifier.fit()
+classifier = SiameseClassifier(trn, val, levs)
+classifier.fit(nb_epoch = 20)
 
-test_data = strat_pairs(df, n_nonmatch = 25, n_match = 25)
-test      = formatter.format_symmetric(test_data, ['obj1', 'obj2'], 'match')
+# -- Apply to an artificially split dataset
+sel = np.random.uniform(0, 1, df.shape[0]) > 0.5
+df1 = df[sel]
+df2 = df[~sel]
 
-preds = classifier.predict(test['x'])
+df1.hash = df1.hash.apply(lambda x: x + '_1')
+df2.hash = df2.hash.apply(lambda x: x + '_2')
 
-pd.crosstab(test['y'].argmax(1), preds.argmax(1))
+tdf = pd.concat([df1, df2])
 
-# -- Dev
+test = strat_pairs(tdf, n_nonmatch = 50, n_match = 50)
+tst  = formatter.format_symmetric(test, ['obj1', 'obj2'], 'match')
 
-preds             = preds[:,1]
-preds.shape       = (preds.shape[0], )
-test_data['preds'] = preds[:test_data.shape[0]]
+preds = classifier.predict(tst['x'])
 
-self_sims, sims = make_self_sims(test_data)
+pd.crosstab(tst['y'].argmax(1), preds.argmax(1))
 
+# -- 
+preds         = preds[:,1]
+preds.shape   = (preds.shape[0], )
+test['preds'] = preds[:test.shape[0]]
 
+self_sims, sims = make_self_sims(test)
+
+# Note the low self similarity for actor and chamber
+# This is because they are syntactically identical, and so have
+# been "pushed away from themselves"
+self_sims
+
+# Column Equivalency classes -- fails on "actor" and "chamber" for aforementioned reason
+sims[sims.sim > .9]
 
 
