@@ -48,14 +48,17 @@ class FakeData:
 
 class PairwiseData:
     
-    strat = None
+    strat = []
     keys  = {
         'hash' : 'hash', 
         'id'   : 'id',
         'obj'  : 'obj'
     }
     
-    def __init__(self, df, nsamp = 250):
+    def __init__(self, df, keys = None, nsamp = 250):
+        if keys:
+            self.keys = keys
+        
         self.nsamp = nsamp
         self.df    = df
     
@@ -70,7 +73,7 @@ class PairwiseData:
         return self.strat
     
     def make_dstrat(self, neg = True, pos = False, prop = .1):
-        if not self.strat:
+        if len(self.strat) == 0:
             _ = self.make_strat()
         
         tmpneg = self.neg.sample(np.floor(prop * self.neg.shape[0])) if neg else self.neg
@@ -136,7 +139,7 @@ class KerasFormatter:
     
     levs = None
     
-    def __init__(self, num_features = 1000, max_len = 50, levs = None):
+    def __init__(self, num_features = 1000, max_len = 150, levs = None):
         self.num_features = num_features
         self.max_len      = max_len
         if levs:
@@ -177,8 +180,13 @@ class KerasFormatter:
     
     def format_symmetric(self, data, xfields, yfield):
         tmp         = self.format(data, xfields, yfield)
-        tmp['x'][0] = np.concatenate([tmp['x'][0], tmp['x'][1]])
-        tmp['x'][1] = np.concatenate([tmp['x'][1], tmp['x'][0]])        
+        
+        tx0 = np.concatenate([tmp['x'][0], tmp['x'][1]])
+        tx1 = np.concatenate([tmp['x'][1], tmp['x'][0]])
+        
+        tmp['x'][0] = tx0
+        tmp['x'][1] = tx1
+        
         tmp['y']    = np.concatenate([tmp['y'], tmp['y']])
         return tmp
     
@@ -197,8 +205,6 @@ class KerasFormatter:
             tmp = re.sub('([^\w])', ' \\1 ', x)
             tmp = re.sub(' +', ' ', tmp)
             return tmp
-
-
 
 
 
@@ -225,7 +231,7 @@ class WitClassifier:
             self.model = self.compile()
     
     def intuit_params(self):            
-        self.n_classes    = len(levs)
+        self.n_classes    = len(self.levs)
         self.num_features = self.train['x'][0].max() + 1
         self.max_len      = self.train['x'][0].shape[1]
     
@@ -283,7 +289,7 @@ class SiameseClassifier(WitClassifier):
     # -- Define Model
     def _make_leg(self):
         leg = Sequential()
-        leg.add(Embedding(num_features, self.recurrent_size))
+        leg.add(Embedding(self.num_features, self.recurrent_size))
         leg.add(LSTM(self.recurrent_size))
         leg.add(Dense(self.dense_size))
         return leg
