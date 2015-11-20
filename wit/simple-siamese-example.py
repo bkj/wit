@@ -7,7 +7,8 @@ import sys
 sys.path.append('/Users/BenJohnson/projects/what-is-this/wit/')
 from wit import *
 
-# --
+# -- Helpers
+
 # Helper function for making testing data
 def strat_pairs(df, n_match = 100, n_nonmatch = 10, hash_id = 'hash'):
     print 'strat_pairs -- starting'
@@ -57,13 +58,16 @@ def make_self_sims(x):
     self_sims = sims[sims['hash1'] == sims['hash2']].sort('sim')
     return self_sims, sims
 
-# --
+# -- Config + Init
+
 # Siamese network example 
 
 num_features = 1000 # Character
 max_len      = 150  # Character
 
 formatter    = KerasFormatter(num_features, max_len)
+
+# -- Training
 
 # Load and format data
 url          = 'https://raw.githubusercontent.com/chrisalbon/variable_type_identification_test_datasets/master/datasets_raw/ak_bill_actions.csv'
@@ -82,7 +86,10 @@ trn, val, levs = formatter.format_symmetric_with_val(train, ['obj1', 'obj2'], 'm
 classifier = SiameseClassifier(trn, val, levs)
 classifier.fit(nb_epoch = 20)
 
-# -- Apply to an artificially split dataset
+
+# -- Application
+
+# Make an artificially split dataset
 sel = np.random.uniform(0, 1, df.shape[0]) > 0.5
 df1 = df[sel]
 df2 = df[~sel]
@@ -92,26 +99,26 @@ df2.hash = df2.hash.apply(lambda x: x + '_2')
 
 tdf = pd.concat([df1, df2])
 
+# Predict on random pairs of entries
 test = strat_pairs(tdf, n_nonmatch = 50, n_match = 50)
 tst  = formatter.format_symmetric(test, ['obj1', 'obj2'], 'match')
 
-preds = classifier.predict(tst['x'])
-
-pd.crosstab(tst['y'].argmax(1), preds.argmax(1))
-
-# -- 
-preds         = preds[:,1]
+preds         = classifier.predict(tst['x'])[:,1]
 preds.shape   = (preds.shape[0], )
 test['preds'] = preds[:test.shape[0]]
 
+# Examining results
 self_sims, sims = make_self_sims(test)
 
+# Internal similarity of fields
 # Note the low self similarity for actor and chamber
 # This is because they are syntactically identical, and so have
 # been "pushed away from themselves"
 self_sims
 
-# Column Equivalency classes -- fails on "actor" and "chamber" for aforementioned reason
+# Column Equivalency classes
+# fails on "actor" and "chamber" for aforementioned reason
+# How would this be resolved?
 sims[sims.sim > .9]
 
 
