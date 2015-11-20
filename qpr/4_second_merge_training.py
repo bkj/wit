@@ -17,6 +17,11 @@ from keras.layers.embeddings import Embedding
 
 from bs4 import BeautifulSoup
 
+pd.set_option('display.max_rows', 50)
+pd.set_option('display.max_columns', 500)
+pd.set_option('display.width', 120)
+
+
 # --
 # Catting all datasets
 
@@ -39,8 +44,19 @@ df['sdoc_id'] = df.apply(lambda x: md5(str(x['source'])).hexdigest()[0:5] + '-' 
 df['markup'] = df['obj']
 df['obj']    = df.markup.apply(lambda x: BeautifulSoup(x).text.encode('utf-8'))
 
-train_data = df.groupby('shash').apply(lambda x: strat_pairs(x, n_match = 500, n_nonmatch = 125)).drop_duplicates().reset_index()
+pos = df.groupby('hash').apply(lambda x: random_pairs(x, nsamp = 250)).drop_duplicates().reset_index()
+del pos['hash']
+del pos['level_1']
 
+orig_neg = df.groupby('id').apply(all_neg_pairs).drop_duplicates()
+neg      = orig_neg.sample(20000).reset_index()
+del neg['id']
+del neg['level_1']
+
+train_data = pd.concat([pos, neg])
+
+# Random sampling
+#train_data = df.groupby('shash').apply(lambda x: strat_pairs(x, n_match = 500, n_nonmatch = 125)).drop_duplicates().reset_index()
 
 # --
 
@@ -57,8 +73,8 @@ val   = make_dataset(valid, words = False)
 model = make_model()
 _ = model.fit(
     [trn['x1'], trn['x2']], trn['y'], 
-    batch_size      = 250,
-    nb_epoch        = 100,
+    batch_size      = 100,
+    nb_epoch        = 30,
     validation_data = ([val['x1'], val['x2']], val['y']),
     show_accuracy   = True
 )
@@ -68,7 +84,9 @@ preds          = model.predict([trn['x1'], trn['x1']], verbose = 1)
 preds.shape    = (preds.shape[0],)
 train['preds'] = preds[:train.shape[0]]
 
-make_self_sims(train)
+self_sims, sims = make_self_sims(train)
+self_sims
+
 
 # Eval on test
 test = strat_pairs(df, n_nonmatch = 25, n_match = 25)
@@ -78,4 +96,11 @@ preds         = model.predict([tst['x1'], tst['x2']], verbose = 1)
 preds.shape   = (preds.shape[0], )
 test['preds'] = preds[:test.shape[0]]
 
-make_self_sims(test)
+self_sims, sims = make_self_sims(test)
+
+equivs, uequivs = make_equiv(test, THRESH = .8)
+eqv             = uequivs.values()
+
+assert(len(np.unique(np.hstack(eqv))) == len(np.hstack(eqv)))
+
+print_eqv(eqv)
