@@ -46,6 +46,82 @@ class FakeData:
         return pd.DataFrame([self.datapoint() for i in xrange(size)])
 
 
+class PairwiseData:
+    
+    strat = None
+    keys  = {
+        'hash' : 'hash', 
+        'id'   : 'id',
+        'obj'  : 'obj'
+    }
+    
+    def __init__(self, df, nsamp = 250):
+        self.nsamp = nsamp
+        self.df    = df
+    
+    def make_random(self):
+        self.random = self.random_pairs(self.df)
+        return self.random
+        
+    def make_strat(self):
+        self.pos   = self.make_pos(self.df)
+        self.neg   = self.make_neg(self.df)
+        self.strat = pd.concat([self.pos, self.neg])
+        return self.strat
+    
+    def make_dstrat(self, neg = True, pos = False, prop = .1):
+        if not self.strat:
+            _ = self.make_strat()
+        
+        tmpneg = self.neg.sample(np.floor(prop * self.neg.shape[0])) if neg else self.neg
+        tmppos = self.pos.sample(np.floor(prop * self.pos.shape[0])) if pos else self.pos
+        
+        return pd.concat([tmppos, tmpneg])
+        
+    def make_pos(self, df):
+        print '-- making pos -- '
+        tmp = df.groupby(self.keys['hash']).apply(self.random_pairs)
+        tmp = tmp.drop_duplicates().reset_index()
+        del tmp[self.keys['hash']]
+        del tmp['level_1']
+        return tmp
+        
+    def make_neg(self, df):
+        print '-- making neg --'
+        tmp = df.groupby(self.keys['id']).apply(self.all_neg_pairs)
+        tmp = tmp.drop_duplicates().reset_index()
+        del tmp[self.keys['id']]
+        del tmp['level_1']
+        return tmp
+    
+    def random_pairs(self, x):
+        s1 = x.sample(self.nsamp, replace = True).reset_index()
+        s2 = x.sample(self.nsamp, replace = True).reset_index()
+        return pd.DataFrame(data = {
+            "obj1"   : s1[self.keys['obj']],
+            "obj2"   : s2[self.keys['obj']],
+            "hash1"  : s1[self.keys['hash']],
+            "hash2"  : s2[self.keys['hash']],
+            "match"  : (s1[self.keys['hash']] == s2[self.keys['hash']]) + 0
+        })
+        
+    def all_neg_pairs(self, x):
+        out = []
+        tmp = x.apply(
+            lambda s1: x.apply(
+                lambda s2: out.append({
+                    "hash1" : s1[self.keys['hash']],
+                    "hash2" : s2[self.keys['hash']],
+                    "obj1"  : s1[self.keys['obj']],
+                    "obj2"  : s2[self.keys['obj']],
+                    "match" : 0,
+                }), 1
+            ), 1
+        )
+        
+        out = pd.DataFrame(out)
+        return out[out.hash1 != out.hash2]
+
 # --
 # Formatting / featurizing for Keras input
 
@@ -123,81 +199,7 @@ class KerasFormatter:
             return tmp
 
 
-class PairwiseData:
-    
-    strat = None
-    keys  = {
-        'hash' : 'hash', 
-        'id'   : 'id',
-        'obj'  : 'obj'
-    }
-    
-    def __init__(self, df, nsamp = 250):
-        self.nsamp = nsamp
-        self.df    = df
-    
-    def make_random(self):
-        self.random = self.random_pairs(self.df)
-        return self.random
-        
-    def make_strat(self):
-        self.pos   = self.make_pos(self.df)
-        self.neg   = self.make_neg(self.df)
-        self.strat = pd.concat([self.pos, self.neg])
-        return self.strat
-    
-    def make_dstrat(self, neg = True, pos = False, prop = .1):
-        if not self.strat:
-            _ = self.make_strat()
-        
-        tmpneg = self.neg.sample(np.floor(prop * self.neg.shape[0])) if neg else self.neg
-        tmppos = self.pos.sample(np.floor(prop * self.pos.shape[0])) if pos else self.pos
-        
-        return pd.concat([tmppos, tmpneg])
-        
-    def make_pos(self, df):
-        print '-- making pos -- '
-        tmp = df.groupby(self.keys['hash']).apply(self.random_pairs)
-        tmp = tmp.drop_duplicates().reset_index()
-        del tmp[self.keys['hash']]
-        del tmp['level_1']
-        return tmp
-        
-    def make_neg(self, df):
-        print '-- making neg --'
-        tmp = df.groupby(self.keys['id']).apply(self.all_neg_pairs)
-        tmp = tmp.drop_duplicates().reset_index()
-        del tmp[self.keys['id']]
-        del tmp['level_1']
-        return tmp
-    
-    def random_pairs(self, x):
-        s1 = x.sample(self.nsamp, replace = True).reset_index()
-        s2 = x.sample(self.nsamp, replace = True).reset_index()
-        return pd.DataFrame(data = {
-            "obj1"   : s1[self.keys['obj']],
-            "obj2"   : s2[self.keys['obj']],
-            "hash1"  : s1[self.keys['hash']],
-            "hash2"  : s2[self.keys['hash']],
-            "match"  : (s1[self.keys['hash']] == s2[self.keys['hash']]) + 0
-        })
-        
-    def all_neg_pairs(self, x):
-        out = []
-        tmp = x.apply(
-            lambda s1: x.apply(
-                lambda s2: out.append({
-                    "hash1" : s1[self.keys['hash']],
-                    "hash2" : s2[self.keys['hash']],
-                    "obj1"  : s1[self.keys['obj']],
-                    "obj2"  : s2[self.keys['obj']],
-                    "match" : 0,
-                }), 1
-            ), 1
-        )
-        
-        out = pd.DataFrame(out)
-        return out[out.hash1 != out.hash2]
+
 
 
 # --
@@ -307,111 +309,3 @@ class SiameseClassifier(WitClassifier):
         
         return True
 
-
-# --
-# Siamese network example 
-
-num_features = 1000
-max_len      = 50
-
-# Load some data and make pairwise comparisons
-in_store = pd.HDFStore('gun_leaves_20151118_v2.h5',complevel=9, complib='bzip2')
-source   = in_store.keys()[1]
-df       = in_store[source]
-in_store.close()
-
-train_data    = PairwiseData(df)
-train_data_ds = train_data.make_dstrat()
-
-# Format for keras training
-formatter        = KerasFormatter(num_features, max_len)
-train, val, levs = formatter.format_symmetric_with_val(train_data_ds, ['obj1', 'obj2'], 'match')
-
-# Compile and train classifier
-classifier = SiameseClassifier(train, val, levs)
-classifier.fit()
-
-# Testing data uses this ugly function for training
-def strat_pairs(df, n_match = 100, n_nonmatch = 10, hash_id = 'hash'):
-    print 'strat_pairs :: starting'
-    
-    out = []
-    uh  = df[hash_id].unique()
-    ds  = dict([(u, df[df[hash_id] == u]) for u in uh])
-    for u1 in uh:
-        d1 = ds[u1]
-        print 'strat_pairs :: %s' % u1
-        
-        for u2 in uh:
-            d2  = ds[u2]
-            
-            cnt = n_match if (u1 == u2) else n_nonmatch
-            s1  = d1.sample(cnt, replace = True).reset_index()
-            s2  = d2.sample(cnt, replace = True).reset_index()
-            
-            # Remove instances where objs are identical -- they aren't informative
-            not_same = s1.obj != s2.obj
-            s1       = s1[not_same]
-            s2       = s2[not_same]
-            
-            out.append(pd.DataFrame(data = {
-                "obj1"   : s1['obj'],
-                "obj2"   : s2['obj'],
-                
-                "hash1"  : s1[hash_id],
-                "hash2"  : s2[hash_id],
-                
-                "match"  : (s1[hash_id] == s2[hash_id]) + 0
-            }))
-    
-    return pd.concat(out)
-
-
-testdata = strat_pairs(df, n_nonmatch = 25, n_match = 25)
-test     = formatter.format_symmetric(testdata, ['obj1', 'obj2'], 'match')
-
-preds = classifier.predict(test['x'])
-
-pd.crosstab(test['y'].argmax(1), preds.argmax(1))
-
-# --
-# String similarity Example
-
-num_features = 1000
-max_len      = 50
-
-# Generate fake dataset
-f    = FakeData()
-data = f.dataframe(size = 5000)
-
-# Format for keras training
-formatter        = KerasFormatter(num_features, max_len)
-train, val, levs = formatter.format_with_val(data, ['obj'], 'hash')
-
-# Compile and train classifier
-classifier = StringClassifier(train, val, levs)
-classifier.fit()
-
-# Create test dataset
-testdata = f.dataframe(size = 5000)
-test     = formatter.format(testdata, ['obj'], 'hash')
-
-# Make prediction on test dataset and check accuracy
-preds = classifier.predict(test['x'])
-
-pred_class = np.array(levs)[preds.argmax(1)]
-act_class  = np.array(levs)[test['y'].argmax(1)]
-pd.crosstab(pred_class, act_class)
-
-
-# Examples
-assert(classifier.classify_string('http://www.gophronesis.com') == 'url')
-assert(classifier.classify_string('ben@gophronesis.com')        == 'free_email')
-assert(classifier.classify_string('2000-01-01')                 == 'date')
-assert(classifier.classify_string('203-802-9283')               == 'phone_number')
-assert(classifier.classify_string('2038329382')                 == 'phone_number')
-assert(classifier.classify_string('241-34-1983')                == 'ssn')
-assert(classifier.classify_string('10.1.70.234')                == 'ipv4')
-assert(classifier.classify_string('andy46')                     == 'user_name')
-assert(classifier.classify_string('41177432883439283')          == 'credit_card_number')
-assert(classifier.classify_string('2001')                       == 'year')
