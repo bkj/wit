@@ -55,18 +55,18 @@ class PairwiseData:
         'obj'  : 'obj'
     }
     
-    def __init__(self, df, keys = None, nsamp = 250):
+    def __init__(self, df, keys = None):
         if keys:
             self.keys = keys
         
-        self.nsamp = nsamp
         self.df    = df
     
     def make_random(self):
         self.random = self.random_pairs(self.df)
         return self.random
     
-    def make_strat(self, neg_prop = 1):
+    def make_strat(self, n_pos = 250, neg_prop = 1):
+        self.n_pos = n_pos
         self.pos   = self.make_pos(self.df)
         self.neg   = self.make_neg(self.df, neg_prop)
         self.strat = pd.concat([self.pos, self.neg])
@@ -75,8 +75,8 @@ class PairwiseData:
     def make_pos(self, df):
         print '-- making pos -- '
         tmp = df.groupby(self.keys['hash']).apply(self.random_pairs)
-        # tmp = tmp.drop_duplicates().reset_index()
-        tmp = tmp.reset_index()
+        tmp = tmp[tmp.id1 != tmp.id2]
+        tmp = tmp.drop_duplicates().reset_index()
         del tmp[self.keys['hash']]
         del tmp['level_1']
         return tmp
@@ -84,30 +84,35 @@ class PairwiseData:
     # NB : This makes all negative pairs.  Might be better to sample here.
     def make_neg(self, df, neg_prop = 1):
         print '-- making neg --'
-        ids = df[self.keys['id']].sample( np.floor(neg_prop * df.shape[0]) )
+        ids = list(df[self.keys['id']].sample( np.floor(neg_prop * df.shape[0]), replace = False))
         tmp = df[df.id.apply(lambda x: x in ids)]
         tmp = tmp.groupby(self.keys['id']).apply(self.all_neg_pairs)
-        # tmp = tmp.drop_duplicates().reset_index()
+        tmp = tmp.drop_duplicates().reset_index()
         
         # Don't push the same string apart? I don't know what to do about this.
         # I think the impact of this is an artifact of the "pseduosiamese"
         # architecture I'm using, and will be fixed when I incorporate the
         # actual siamese architecture.
         # tmp = tmp[tmp.obj1 != tmp2.obj2]
-        tmp = tmp.reset_index()
+        # tmp = tmp.reset_index()
         
         del tmp[self.keys['id']]
         del tmp['level_1']
         return tmp
     
     def random_pairs(self, x):
-        s1 = x.sample(self.nsamp, replace = True).reset_index()
-        s2 = x.sample(self.nsamp, replace = True).reset_index()
+        s1 = x.sample(self.n_pos, replace = True).reset_index()
+        s2 = x.sample(self.n_pos, replace = True).reset_index()
         return pd.DataFrame(data = {
+            "id1"    : s1[self.keys['id']],
+            "id2"    : s2[self.keys['id']],
+            
             "obj1"   : s1[self.keys['obj']],
             "obj2"   : s2[self.keys['obj']],
+            
             "hash1"  : s1[self.keys['hash']],
             "hash2"  : s2[self.keys['hash']],
+            
             "match"  : (s1[self.keys['hash']] == s2[self.keys['hash']]) + 0
         })
         
@@ -116,6 +121,8 @@ class PairwiseData:
         tmp = x.apply(
             lambda s1: x.apply(
                 lambda s2: out.append({
+                    "id1"   : s1[self.keys['id']],
+                    "id2"   : s2[self.keys['id']],
                     "hash1" : s1[self.keys['hash']],
                     "hash2" : s2[self.keys['hash']],
                     "obj1"  : s1[self.keys['obj']],
@@ -130,6 +137,8 @@ class PairwiseData:
 
 # --
 # Formatting / featurizing for Keras input
+
+from time import time
 
 import numpy as np
 import pandas as pd
@@ -160,7 +169,7 @@ class KerasFormatter:
         if not self.levs:
             self.levs = sorted(list(data[yfield].unique()))
         
-        y    = self._format_y(data[yfield], self.levs)
+        y = self._format_y(data[yfield], self.levs)
         return {'x' : xs, 'y' : y}
     
     def format_with_val(self, data, xfields, yfield, val_prop = 0.2):
@@ -182,7 +191,7 @@ class KerasFormatter:
         )
     
     def format_symmetric(self, data, xfields, yfield):
-        tmp         = self.format(data, xfields, yfield)
+        tmp = self.format(data, xfields, yfield)
         
         tx0 = np.concatenate([tmp['x'][0], tmp['x'][1]])
         tx1 = np.concatenate([tmp['x'][1], tmp['x'][0]])
@@ -190,8 +199,8 @@ class KerasFormatter:
         tmp['x'][0] = tx0
         tmp['x'][1] = tx1
         
-        tmp['y']    = np.concatenate([tmp['y'], tmp['y']])
-        return tmp
+        tmp['y'] = np.concatenate([tmp['y'], tmp['y']])
+        return (tmp, self.levs)
     
     def _format_x(self, z, words):
         return sequence.pad_sequences(
@@ -221,9 +230,8 @@ from keras.layers.embeddings import Embedding
 class WitClassifier:
     model = None
     
-    def __init__(self, train, val, levs, model = None):        
-        self.train = train
-        self.val   = val
+    def __init__(self, train, levs, model = None):        
+        self.train = train    
         self.levs  = levs
         
         self.intuit_params()
@@ -265,10 +273,10 @@ class StringClassifier(WitClassifier):
         
         _ = self.model.fit(
             self.train['x'][0], self.train['y'],
-            batch_size      = batch_size,
-            nb_epoch        = nb_epoch,
-            validation_data = (self.val['x'][0], self.val['y']),
-            show_accuracy   = True
+            batch_size       = batch_size,
+            nb_epoch         = nb_epoch,
+            validation_split = 0.2,
+            show_accuracy    = True
         )
         
         return True
@@ -285,8 +293,8 @@ class StringClassifier(WitClassifier):
 # Siamese network trainer
 class SiameseClassifier(WitClassifier):
     
-    recurrent_size = 64
-    dense_size     = 32
+    recurrent_size = 32
+    dense_size     = 16
     dropout        = 0.5
     
     # -- Define Model
@@ -308,13 +316,15 @@ class SiameseClassifier(WitClassifier):
         return model
     
     def fit(self, batch_size = 100, nb_epoch = 10):
+        T = time()
         _ = self.model.fit(
             self.train['x'], self.train['y'],
-            batch_size      = batch_size,
-            nb_epoch        = nb_epoch,
-            validation_data = (self.val['x'], self.val['y']),
-            show_accuracy   = True
+            batch_size       = batch_size,
+            nb_epoch         = nb_epoch,
+            validation_split = 0.2,
+            show_accuracy    = True
         )
         
+        print 'elapsed time :: %f' % (time() - T) 
         return True
 
