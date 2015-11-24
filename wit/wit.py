@@ -133,7 +133,10 @@ class PairwiseData:
         )
         
         out = pd.DataFrame(out)
-        return out[out.hash1 != out.hash2]
+        
+        # Remove information pushing certain hashes apart
+        out = [out.hash1 != out.hash2] 
+        return out
 
 # --
 # Formatting / featurizing for Keras input
