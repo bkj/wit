@@ -293,14 +293,15 @@ class StringClassifier(WitClassifier):
 # Siamese network trainer
 class SiameseClassifier(WitClassifier):
     
-    recurrent_size = 32
-    dense_size     = 16
-    dropout        = 0.5
+    recurrent_size = 64
+    dense_size     = 32
+    dropout        = 0.25
     
     # -- Define Model
     def _make_leg(self):
         leg = Sequential()
         leg.add(Embedding(self.num_features, self.recurrent_size))
+        # leg.add(LSTM(self.recurrent_size, return_sequences = True))
         leg.add(LSTM(self.recurrent_size))
         leg.add(Dense(self.dense_size))
         return leg
