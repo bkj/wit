@@ -135,7 +135,7 @@ class PairwiseData:
         out = pd.DataFrame(out)
         
         # Remove information pushing certain hashes apart
-        out = [out.hash1 != out.hash2] 
+        out = out[out.hash1 != out.hash2] 
         return out
 
 # --
@@ -304,7 +304,7 @@ class SiameseClassifier(WitClassifier):
     def _make_leg(self):
         leg = Sequential()
         leg.add(Embedding(self.num_features, self.recurrent_size))
-        # leg.add(LSTM(self.recurrent_size, return_sequences = True))
+        leg.add(LSTM(self.recurrent_size, return_sequences = True))
         leg.add(LSTM(self.recurrent_size))
         leg.add(Dense(self.dense_size))
         return leg

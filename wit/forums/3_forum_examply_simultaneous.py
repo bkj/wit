@@ -99,7 +99,7 @@ formatter = KerasFormatter(num_features, max_len)
 # --
 # Load and format data
 
-in_store = pd.HDFStore('gun_leaves_20151118_v2.h5',complevel=9, complib='bzip2')
+in_store = pd.HDFStore('/Users/BenJohnson/projects/what-is-this/qpr/gun_leaves_20151118_v2.h5',complevel=9, complib='bzip2')
 
 df = {}
 for k in in_store.keys():
