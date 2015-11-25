@@ -67,26 +67,6 @@ def make_self_sims(x):
     self_sims = sims[sims['hash1'] == sims['hash2']].sort('sim')
     return self_sims, sims
 
-class bcolors:
-    HEADER = '\033[95m'
-    OKBLUE = '\033[94m'
-    OKGREEN = '\033[92m'
-    WARNING = '\033[93m'
-    FAIL = '\033[91m'
-    ENDC = '\033[0m'
-    BOLD = '\033[1m'
-    UNDERLINE = '\033[4m'
-
-
-def print_eqv(eqv):
-    for e in eqv:
-        print bcolors.WARNING + '\n --- \n'
-        print e
-        print '\n' + bcolors.ENDC
-        for h in e:
-            print bcolors.OKGREEN + h + '\t(%d rows)' % df[df.hash == h].shape[0] + bcolors.ENDC
-            print df[df.hash == h].obj.head()
-
 
 # -- 
 # Config + Init

@@ -167,7 +167,7 @@ class KerasFormatter:
         if len(xfields) > 2:
             raise Exception('illegal number of xfields')
         
-        xs   = [self._format_x(data[xf], words) for xf in xfields]
+        xs = [self._format_x(data[xf], words) for xf in xfields]
         
         if not self.levs:
             self.levs = sorted(list(data[yfield].unique()))
@@ -227,7 +227,7 @@ class KerasFormatter:
 # Neural network string classifier
 from keras.models import Sequential
 from keras.layers.core import Dense, Dropout, Activation, Merge
-from keras.layers.recurrent import LSTM
+from keras.layers.recurrent import LSTM, JZS1
 from keras.layers.embeddings import Embedding
 
 class WitClassifier:
@@ -304,8 +304,9 @@ class SiameseClassifier(WitClassifier):
     def _make_leg(self):
         leg = Sequential()
         leg.add(Embedding(self.num_features, self.recurrent_size))
-        leg.add(LSTM(self.recurrent_size, return_sequences = True))
-        leg.add(LSTM(self.recurrent_size))
+        # Two layer
+        # leg.add(JZS1(self.recurrent_size, return_sequences = True))
+        leg.add(JZS1(self.recurrent_size))
         leg.add(Dense(self.dense_size))
         return leg
     
@@ -332,3 +333,95 @@ class SiameseClassifier(WitClassifier):
         print 'elapsed time :: %f' % (time() - T) 
         return True
 
+# --
+# Helpers
+
+# Helper function for making testing data
+def strat_pairs(df, n_match = 100, n_nonmatch = 10, hash_id = 'hash'):
+    print 'strat_pairs -- starting'
+    
+    out = []
+    uh  = df[hash_id].unique()
+    ds  = dict([(u, df[df[hash_id] == u]) for u in uh])
+    for u1 in uh:
+        d1 = ds[u1]
+        print 'strat_pairs :: %s' % u1
+        
+        for u2 in uh:
+            d2  = ds[u2]
+            
+            cnt = n_match if (u1 == u2) else n_nonmatch
+            s1  = d1.sample(cnt, replace = True).reset_index()
+            s2  = d2.sample(cnt, replace = True).reset_index()
+            
+            # If we were using this for training, 
+            # we'd want to remove these because they're non-informative
+            # not_same = s1.obj != s2.obj
+            # s1       = s1[not_same]
+            # s2       = s2[not_same]
+            
+            out.append(pd.DataFrame(data = {
+                "obj1"   : s1['obj'],
+                "obj2"   : s2['obj'],
+                
+                "hash1"  : s1[hash_id],
+                "hash2"  : s2[hash_id],
+                
+                "match"  : (s1[hash_id] == s2[hash_id]) + 0
+            }))
+    
+    return pd.concat(out)
+
+
+# Helper function for viewing aggregate similarity between fields
+def make_self_sims(x):
+    tmp = x.groupby(['hash1', 'hash2'])['preds']
+    sims = pd.DataFrame({
+        'sim' : tmp.agg(np.median),
+        'cnt' : tmp.agg(len),
+        'sum' : tmp.agg(sum)
+    }).reset_index()
+    
+    sims.sim  = sims.sim.round(4)
+    self_sims = sims[sims['hash1'] == sims['hash2']].sort('sim')
+    return self_sims, sims
+
+
+def make_equiv(test, THRESH = .8):
+    equivs  = {}
+    uequivs = {}
+    uhash   = test['hash1'].unique()
+    for h in uhash:
+        sub1      = test[test['hash1'] == h]
+        medpred1  = sub1.groupby('hash2')['preds'].agg(np.median)
+        
+        sub2      = test[test['hash2'] == h]
+        medpred2  = sub2.groupby('hash1')['preds'].agg(np.median)
+        
+        e = sorted(list(set(medpred1.index[medpred1 > THRESH]).union(set(medpred2.index[medpred2 > THRESH]))))
+        print '%s :: %d' % (h, len(e))
+        uequivs[str(e)] = e
+        equivs[h]       = e
+    
+    return equivs, uequivs
+
+
+class bcolors:
+    HEADER = '\033[95m'
+    OKBLUE = '\033[94m'
+    OKGREEN = '\033[92m'
+    WARNING = '\033[93m'
+    FAIL = '\033[91m'
+    ENDC = '\033[0m'
+    BOLD = '\033[1m'
+    UNDERLINE = '\033[4m'
+
+
+def print_eqv(eqv):
+    for e in eqv:
+        print bcolors.WARNING + '\n --- \n'
+        print e
+        print '\n' + bcolors.ENDC
+        for h in e:
+            print bcolors.OKGREEN + h + '\t(%d rows)' % df[df.hash == h].shape[0] + bcolors.ENDC
+            print df[df.hash == h].obj.head()
