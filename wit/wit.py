@@ -260,7 +260,6 @@ class StringClassifier(WitClassifier):
     dropout        = 0.5
     
     def compile(self):
-        print('--- compiling string classifier model ---')
         model = Sequential()
         model.add(Embedding(self.num_features, self.recurrent_size))
         model.add(LSTM(self.recurrent_size))
