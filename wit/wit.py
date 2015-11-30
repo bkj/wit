@@ -176,7 +176,7 @@ class KerasFormatter:
             self.levs = sorted(list(data[yfield].unique()))
         
         y = self._format_y(data[yfield], self.levs)
-        return {'x' : xs, 'y' : y}
+        return ({'x' : xs, 'y' : y}, self.levs)
     
     # def format_with_val(self, data, xfields, yfield, val_prop = 0.2):
     #     sel       = np.random.uniform(0, 1, data.shape[0]) > val_prop
@@ -211,20 +211,11 @@ class KerasFormatter:
     
     def _format_x(self, z, words):
         return sequence.pad_sequences(
-            [one_hot(self.string_explode(x, words = words), self.num_features, filters = '') for x in z], 
+            [one_hot(string_explode(x, words = words), self.num_features, filters = '') for x in z], 
         self.max_len)
     
     def _format_y(self, z, levs):
         return np_utils.to_categorical([levs.index(x) for x in z])
-    
-    def string_explode(self, x, words):
-        if not words:
-            return ' '.join(list(str(x))).strip()
-        elif words:
-            tmp = re.sub('([^\w])', ' \\1 ', x)
-            tmp = re.sub(' +', ' ', tmp)
-            return tmp
-
 
 
 # --
@@ -338,6 +329,14 @@ class SiameseClassifier(WitClassifier):
 
 # --
 # Helpers
+
+def string_explode(x, words = False):
+    if not words:
+        return ' '.join(list(str(x))).strip()
+    elif words:
+        tmp = re.sub('([^\w])', ' \\1 ', x)
+        tmp = re.sub(' +', ' ', tmp)
+        return tmp
 
 # Helper function for making testing data
 def strat_pairs(df, n_match = 100, n_nonmatch = 10, hash_id = 'hash'):

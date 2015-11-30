@@ -13,8 +13,8 @@ data = f.dataframe(size = 5000)
 
 # Format for keras training
 print 'WIT :: Formatting data'
-formatter        = KerasFormatter(num_features, max_len)
-train, val, levs = formatter.format_with_val(data, ['obj'], 'hash')
+formatter   = KerasFormatter(num_features, max_len)
+train, levs = formatter.format(data, ['obj'], 'hash')
 
 # Compile and train classifier
 print 'WIT :: Compiling classifier'
@@ -24,7 +24,7 @@ classifier.fit(batch_size = 300)
 # Create test dataset
 print 'WIT :: Creating test dataset'
 testdata = f.dataframe(size = 5000)
-test     = formatter.format(testdata, ['obj'], 'hash')
+test, _  = formatter.format(testdata, ['obj'], 'hash')
 
 # Make prediction on test dataset and check accuracy
 print 'WIT :: Predicting on test dataset'
