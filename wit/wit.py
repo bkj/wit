@@ -155,13 +155,9 @@ from keras.preprocessing.text import one_hot
 
 class KerasFormatter:
     
-    levs = None
-    
-    def __init__(self, num_features = 1000, max_len = 150, levs = None):
+    def __init__(self, num_features = 1000, max_len = 150):
         self.num_features = num_features
         self.max_len      = max_len
-        if levs:
-            self.levs = levs
     
     def format(self, data, xfields, yfield, words = False):
         if not isinstance(xfields, list):
@@ -170,45 +166,11 @@ class KerasFormatter:
         if len(xfields) > 2:
             raise Exception('illegal number of xfields')
         
-        xs = [self._format_x(data[xf], words) for xf in xfields]
+        levs = sorted(list(data[yfield].unique()))
+        xs   = [self._format_x(data[xf], words) for xf in xfields]
+        y    = self._format_y(data[yfield], levs)
+        return ({'x' : xs, 'y' : y}, levs)
         
-        if not self.levs:
-            self.levs = sorted(list(data[yfield].unique()))
-        
-        y = self._format_y(data[yfield], self.levs)
-        return ({'x' : xs, 'y' : y}, self.levs)
-    
-    # def format_with_val(self, data, xfields, yfield, val_prop = 0.2):
-    #     sel       = np.random.uniform(0, 1, data.shape[0]) > val_prop
-    #     self.levs = sorted(list(data[yfield].unique()))
-    #     return (
-    #         self.format(data[sel], xfields, yfield), 
-    #         self.format(data[~sel], xfields, yfield), 
-    #         self.levs
-    #     )
-    
-    # def format_symmetric_with_val(self, data, xfields, yfield, val_prop = 0.2):
-    #     sel       = np.random.uniform(0, 1, data.shape[0]) > val_prop
-    #     self.levs = sorted(list(data[yfield].unique()))
-    #     return (
-    #         self.format_symmetric(data[sel], xfields, yfield), 
-    #         self.format_symmetric(data[~sel], xfields, yfield), 
-    #         self.levs
-    #     )
-    
-    def format_symmetric(self, data, xfields, yfield, words = False):
-        self.levs = None
-        tmp = self.format(data, xfields, yfield, words)
-        
-        tx0 = np.concatenate([tmp['x'][0], tmp['x'][1]])
-        tx1 = np.concatenate([tmp['x'][1], tmp['x'][0]])
-        
-        tmp['x'][0] = tx0
-        tmp['x'][1] = tx1
-        
-        tmp['y'] = np.concatenate([tmp['y'], tmp['y']])
-        return (tmp, self.levs)
-    
     def _format_x(self, z, words):
         return sequence.pad_sequences(
             [one_hot(string_explode(x, words = words), self.num_features, filters = '') for x in z], 
