@@ -212,7 +212,7 @@ class KerasFormatter:
     def _format_x(self, z, words):
         return sequence.pad_sequences(
             [one_hot(string_explode(x, words = words), self.num_features, filters = '') for x in z], 
-        self.max_len)
+        maxlen = self.max_len, truncating = 'post')
     
     def _format_y(self, z, levs):
         return np_utils.to_categorical([levs.index(x) for x in z])
