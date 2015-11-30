@@ -15,59 +15,6 @@ import matplotlib.pyplot as plt
 from pylab import pcolor, show, colorbar, xticks, yticks
 from sklearn.cluster import AffinityPropagation, AgglomerativeClustering
 
-
-# -- Helpers
-
-# Helper function for making testing data
-def strat_pairs(df, n_match = 100, n_nonmatch = 10, hash_id = 'hash'):
-    print 'strat_pairs -- starting'
-    
-    out = []
-    uh  = df[hash_id].unique()
-    ds  = dict([(u, df[df[hash_id] == u]) for u in uh])
-    for u1 in uh:
-        d1 = ds[u1]
-        print 'strat_pairs :: %s' % u1
-        
-        for u2 in uh:
-            d2  = ds[u2]
-            
-            cnt = n_match if (u1 == u2) else n_nonmatch
-            s1  = d1.sample(cnt, replace = True).reset_index()
-            s2  = d2.sample(cnt, replace = True).reset_index()
-            
-            # If we were using this for training, 
-            # we'd want to remove these because they're non-informative
-            # not_same = s1.obj != s2.obj
-            # s1       = s1[not_same]
-            # s2       = s2[not_same]
-            
-            out.append(pd.DataFrame(data = {
-                "obj1"   : s1['obj'],
-                "obj2"   : s2['obj'],
-                
-                "hash1"  : s1[hash_id],
-                "hash2"  : s2[hash_id],
-                
-                "match"  : (s1[hash_id] == s2[hash_id]) + 0
-            }))
-    
-    return pd.concat(out)
-
-# Helper function for viewing aggregate similarity between fields
-def make_self_sims(x):
-    tmp = x.groupby(['hash1', 'hash2'])['preds']
-    sims = pd.DataFrame({
-        'sim' : tmp.agg(np.median),
-        'cnt' : tmp.agg(len),
-        'sum' : tmp.agg(sum)
-    }).reset_index()
-    
-    sims.sim  = sims.sim.round(4)
-    self_sims = sims[sims['hash1'] == sims['hash2']].sort('sim')
-    return self_sims, sims
-
-
 # -- 
 # Config + Init
 

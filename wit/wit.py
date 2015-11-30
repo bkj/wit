@@ -1,6 +1,7 @@
 # --
 # Fake dataset generator
 
+import re
 import numpy as np
 import pandas as pd
 from faker import Factory
@@ -61,24 +62,26 @@ class PairwiseData:
         
         self.df    = df
     
-    def make_random(self):
-        self.random = self.random_pairs(self.df)
+    def make_random(self, size = 1000):
+        self.random = self.random_pairs(self.df, size)
         return self.random
     
     def make_strat(self, n_pos = 250, neg_prop = 1):
-        self.n_pos = n_pos
-        self.pos   = self.make_pos(self.df)
+        self.pos   = self.make_pos(self.df, n_pos)
         self.neg   = self.make_neg(self.df, neg_prop)
         self.strat = pd.concat([self.pos, self.neg])
         return self.strat
         
-    def make_pos(self, df):
+    def make_pos(self, df, n_pos):
         print '-- making pos -- '
-        tmp = df.groupby(self.keys['hash']).apply(self.random_pairs)
+        tmp = df.groupby(self.keys['hash']).apply(lambda x: self.random_pairs(x, n_pos))
+        
         tmp = tmp[tmp.id1 != tmp.id2]
         tmp = tmp.drop_duplicates().reset_index()
+        
         del tmp[self.keys['hash']]
         del tmp['level_1']
+        
         return tmp
     
     # NB : This makes all negative pairs.  Might be better to sample here.
@@ -100,9 +103,9 @@ class PairwiseData:
         del tmp['level_1']
         return tmp
     
-    def random_pairs(self, x):
-        s1 = x.sample(self.n_pos, replace = True).reset_index()
-        s2 = x.sample(self.n_pos, replace = True).reset_index()
+    def random_pairs(self, x, size):
+        s1 = x.sample(size, replace = True).reset_index()
+        s2 = x.sample(size, replace = True).reset_index()
         return pd.DataFrame(data = {
             "id1"    : s1[self.keys['id']],
             "id2"    : s2[self.keys['id']],
@@ -175,26 +178,27 @@ class KerasFormatter:
         y = self._format_y(data[yfield], self.levs)
         return {'x' : xs, 'y' : y}
     
-    def format_with_val(self, data, xfields, yfield, val_prop = 0.2):
-        sel       = np.random.uniform(0, 1, data.shape[0]) > val_prop
-        self.levs = sorted(list(data[yfield].unique()))
-        return (
-            self.format(data[sel], xfields, yfield), 
-            self.format(data[~sel], xfields, yfield), 
-            self.levs
-        )
+    # def format_with_val(self, data, xfields, yfield, val_prop = 0.2):
+    #     sel       = np.random.uniform(0, 1, data.shape[0]) > val_prop
+    #     self.levs = sorted(list(data[yfield].unique()))
+    #     return (
+    #         self.format(data[sel], xfields, yfield), 
+    #         self.format(data[~sel], xfields, yfield), 
+    #         self.levs
+    #     )
     
-    def format_symmetric_with_val(self, data, xfields, yfield, val_prop = 0.2):
-        sel       = np.random.uniform(0, 1, data.shape[0]) > val_prop
-        self.levs = sorted(list(data[yfield].unique()))
-        return (
-            self.format_symmetric(data[sel], xfields, yfield), 
-            self.format_symmetric(data[~sel], xfields, yfield), 
-            self.levs
-        )
+    # def format_symmetric_with_val(self, data, xfields, yfield, val_prop = 0.2):
+    #     sel       = np.random.uniform(0, 1, data.shape[0]) > val_prop
+    #     self.levs = sorted(list(data[yfield].unique()))
+    #     return (
+    #         self.format_symmetric(data[sel], xfields, yfield), 
+    #         self.format_symmetric(data[~sel], xfields, yfield), 
+    #         self.levs
+    #     )
     
-    def format_symmetric(self, data, xfields, yfield):
-        tmp = self.format(data, xfields, yfield)
+    def format_symmetric(self, data, xfields, yfield, words = False):
+        self.levs = None
+        tmp = self.format(data, xfields, yfield, words)
         
         tx0 = np.concatenate([tmp['x'][0], tmp['x'][1]])
         tx1 = np.concatenate([tmp['x'][1], tmp['x'][0]])
@@ -417,7 +421,7 @@ class bcolors:
     UNDERLINE = '\033[4m'
 
 
-def print_eqv(eqv):
+def print_eqv(eqv, df):
     for e in eqv:
         print bcolors.WARNING + '\n --- \n'
         print e
