@@ -1,36 +1,41 @@
-from wit import *
-
 # --
-# String similarity Example
+# WIT :: String similarity Example
+
+from wit import *
 
 num_features = 1000
 max_len      = 50
 
 # Generate fake dataset
+print 'WIT :: Generating data'
 f    = FakeData()
 data = f.dataframe(size = 5000)
 
 # Format for keras training
-formatter        = KerasFormatter(num_features, max_len)
-train, val, levs = formatter.format_with_val(data, ['obj'], 'hash')
+print 'WIT :: Formatting data'
+formatter   = KerasFormatter(num_features, max_len)
+train, levs = formatter.format(data, ['obj'], 'hash')
 
 # Compile and train classifier
-classifier = StringClassifier(train, val, levs)
-classifier.fit()
+print 'WIT :: Compiling classifier'
+classifier = StringClassifier(train, levs)
+classifier.fit(batch_size = 300)
 
 # Create test dataset
+print 'WIT :: Creating test dataset'
 testdata = f.dataframe(size = 5000)
-test     = formatter.format(testdata, ['obj'], 'hash')
+test, _  = formatter.format(testdata, ['obj'], 'hash')
 
 # Make prediction on test dataset and check accuracy
+print 'WIT :: Predicting on test dataset'
 preds = classifier.predict(test['x'])
 
+print 'WIT :: Prediction confusion matrix'
 pred_class = np.array(levs)[preds.argmax(1)]
 act_class  = np.array(levs)[test['y'].argmax(1)]
-pd.crosstab(pred_class, act_class)
+print(pd.crosstab(pred_class, act_class))
 
-
-# Examples
+# Some examples:
 assert(classifier.classify_string('http://www.gophronesis.com') == 'url')
 assert(classifier.classify_string('ben@gophronesis.com')        == 'free_email')
 assert(classifier.classify_string('2000-01-01')                 == 'date')
