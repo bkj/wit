@@ -1,6 +1,6 @@
 # what-is-this
 
-"Schema matching" algorithms
+Algorithms for string classification and string embeddings using 'weak' supervision, with eventual application to 'schema alignment'.
 
 ### Requirements
 
