@@ -11,12 +11,12 @@ Algorithms for string classification and string embeddings using 'weak' supervis
 Here are two ways that we could think about similarity of strings
 
 - `syntactic` : strings are similar, because they have similar structure
-   - usernames : `ben46 ~= frank123`
-   - subject_line : `'Re: good morning' ~= 'Re: circling back'`
+   - usernames : `ben46 is close to frank123`
+   - subject_line : `'Re: good morning' is close to 'Re: circling back'`
    
 - `semantic` : strings are similar, because of extrinsic information about the world
-  - date : `'2016-01-01' = 'Jan 1st 2016'`
-  - country : `'AR' = 'Argentina'`
+  - date : `'2016-01-01' is close to 'Jan 1st 2016'`
+  - country : `'AR' is close to 'Argentina'`
 
 and here are two ways we could think about similarity of sets of strings:
 
