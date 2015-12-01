@@ -191,7 +191,7 @@ class KerasFormatter:
 # Neural network string classifier
 from keras.models import Sequential
 from keras.layers.core import Dense, Dropout, Activation, Merge
-from keras.layers.recurrent import LSTM, JZS1
+from keras.layers.recurrent import LSTM
 from keras.layers.embeddings import Embedding
 
 class WitClassifier:
@@ -415,11 +415,13 @@ def make_triplet_train(df, N = 200):
         print bcolors.OKGREEN + '  + ' + uh + bcolors.ENDC
         pos  = df[df.hash == uh].sample(N * 2, replace = True)
         
-        # neg = df[(df.hash != uh) & df.id.isin(pos.id.unique())]
         neg = df[(df.hash != uh) & df.id.isin(pos.id.unique())].sample(N, replace = True)
         
-        pos['doc']  = uh
+        pos['doc'] = uh
         neg['doc'] = uh
+        
+        pos['role'] = 'pos'
+        neg['role'] = 'neg'
         
         for i in range(N):
             anc_ = pos.iloc[i].to_dict()
@@ -432,6 +434,8 @@ def make_triplet_train(df, N = 200):
             pos_['ex'] = counter
             neg_['ex'] = counter
             
+            anc_['role'] = 'anc'
+
             out += [ anc_, pos_, neg_ ]
             
             counter += 1
