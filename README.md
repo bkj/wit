@@ -33,3 +33,4 @@ Prototype code for calculating `syntactic` and `semantic` similarity are include
 
 - `wit/string-example.py` shows how to build a string classifier (ie `semantic`)
 - `wit/simple-embedding-example.py` shows how to use the triplet loss function to learn a string embedding (ie `syntactic`)
+- `wit/name-example.py` is a stub to remind myself to implement a string classifier that distinguishes between country of origin of name
