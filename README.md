@@ -2,6 +2,10 @@
 
 "Schema matching" algorithms
 
+### Requirements
+
+`Keras` fork from `https://github.com/bkj/keras`, which contains custom objective functions and regularizers
+
 ### Notes
 
 Here are two ways that we could think about similarity of strings
