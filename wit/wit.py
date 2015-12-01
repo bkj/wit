@@ -1,9 +1,9 @@
-# --
-# Fake dataset generator
-
 import re
 import numpy as np
 import pandas as pd
+
+# <fake-dataset-generator>
+
 from faker import Factory
 
 CHOICES = [
@@ -45,6 +45,8 @@ class FakeData:
     
     def dataframe(self, size = 1000):
         return pd.DataFrame([self.datapoint() for i in xrange(size)])
+
+# </fake-dataset-generator>
 
 
 class PairwiseData:
@@ -173,8 +175,13 @@ class KerasFormatter:
         
     def _format_x(self, z, words):
         return sequence.pad_sequences(
-            [one_hot(string_explode(x, words = words), self.num_features, filters = '') for x in z], 
-        maxlen = self.max_len, truncating = 'post')
+            [
+                one_hot(string_explode(x, words = words), self.num_features, filters = '') 
+                for x in z
+            ], 
+            maxlen = self.max_len, 
+            # truncating = 'post'
+        )
     
     def _format_y(self, z, levs):
         return np_utils.to_categorical([levs.index(x) for x in z])
@@ -294,7 +301,7 @@ class SiameseClassifier(WitClassifier):
 
 def string_explode(x, words = False):
     if not words:
-        return ' '.join(list(str(x))).strip()
+        return ' '.join(list(str(x))[::-1] ).strip()
     elif words:
         tmp = re.sub('([^\w])', ' \\1 ', x)
         tmp = re.sub(' +', ' ', tmp)
@@ -389,3 +396,45 @@ def print_eqv(eqv, df):
         for h in e:
             print bcolors.OKGREEN + h + '\t(%d rows)' % df[df.hash == h].shape[0] + bcolors.ENDC
             print df[df.hash == h].obj.head()
+
+# Permutes order while keeping blocks of N stable
+def modsel(S, N = 3):
+    n_samp = S / N
+    sel    = N * np.random.choice(range(n_samp), n_samp)
+    sels   = np.vstack([a + sel for a in range(N)]).T
+    return np.reshape(sels, (n_samp * N))
+
+
+def make_triplet_train(df, N = 200):
+    print '\n'
+    out     = []
+    uhash   = df.hash.unique()
+    
+    counter = 0
+    for uh in uhash:
+        print bcolors.OKGREEN + '  + ' + uh + bcolors.ENDC
+        pos  = df[df.hash == uh].sample(N * 2, replace = True)
+        
+        # neg = df[(df.hash != uh) & df.id.isin(pos.id.unique())]
+        neg = df[(df.hash != uh) & df.id.isin(pos.id.unique())].sample(N, replace = True)
+        
+        pos['doc']  = uh
+        neg['doc'] = uh
+        
+        for i in range(N):
+            anc_ = pos.iloc[i].to_dict()
+            pos_ = pos.iloc[N + i].to_dict()
+            
+            # neg_ = neg[neg.id == anc_['id']].sample(1).iloc[0].to_dict()
+            neg_ = neg.iloc[i].to_dict()
+            
+            anc_['ex'] = counter
+            pos_['ex'] = counter
+            neg_['ex'] = counter
+            
+            out += [ anc_, pos_, neg_ ]
+            
+            counter += 1
+    
+    print '\n'
+    return pd.DataFrame(out)

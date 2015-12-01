@@ -1,124 +1,83 @@
-import pandas as pd
 import urllib2
+import pandas as pd
+import numpy as np
 
 from matplotlib import pyplot as plt
 
-import sys
-sys.path.append('/Users/BenJohnson/projects/what-is-this/wit/')
 from wit import *
 
-# -- Helpers
+# --
 
-# Helper function for making testing data
-def strat_pairs(df, n_match = 100, n_nonmatch = 10, hash_id = 'hash'):
-    print 'strat_pairs -- starting'
-    
-    out = []
-    uh  = df[hash_id].unique()
-    ds  = dict([(u, df[df[hash_id] == u]) for u in uh])
-    for u1 in uh:
-        d1 = ds[u1]
-        print 'strat_pairs :: %s' % u1
-        
-        for u2 in uh:
-            d2  = ds[u2]
-            
-            cnt = n_match if (u1 == u2) else n_nonmatch
-            s1  = d1.sample(cnt, replace = True).reset_index()
-            s2  = d2.sample(cnt, replace = True).reset_index()
-            
-            # If we were using this for training, 
-            # we'd want to remove these because they're non-informative
-            # not_same = s1.obj != s2.obj
-            # s1       = s1[not_same]
-            # s2       = s2[not_same]
-            
-            out.append(pd.DataFrame(data = {
-                "obj1"   : s1['obj'],
-                "obj2"   : s2['obj'],
-                
-                "hash1"  : s1[hash_id],
-                "hash2"  : s2[hash_id],
-                
-                "match"  : (s1[hash_id] == s2[hash_id]) + 0
-            }))
-    
-    return pd.concat(out)
-
-# Helper function for viewing aggregate similarity between fields
-def make_self_sims(x):
-    tmp = x.groupby(['hash1', 'hash2'])['preds']
-    sims = pd.DataFrame({
-        'sim' : tmp.agg(np.median),
-        'cnt' : tmp.agg(len),
-        'sum' : tmp.agg(sum)
-    }).reset_index()
-    
-    sims.sim  = sims.sim.round(4)
-    self_sims = sims[sims['hash1'] == sims['hash2']].sort('sim')
-    return self_sims, sims
-
-# -- Config + Init
-
-# Siamese network example 
-
-num_features = 1000 # Character
-max_len      = 150  # Character
+num_features = 100 # Characters
+max_len      = 150 # Characters
 
 formatter    = KerasFormatter(num_features, max_len)
 
-# -- Training
+# -- 
+# Training
 
-# Load and format data
+# Load data
 url          = 'https://raw.githubusercontent.com/chrisalbon/variable_type_identification_test_datasets/master/datasets_raw/ak_bill_actions.csv'
+
 raw_df       = pd.read_csv(url)
+sel          = np.random.choice(range(raw_df.shape[0]), 1000)
+raw_df       = raw_df.iloc[sel].reset_index()
 raw_df['id'] = range(raw_df.shape[0])
+
 df           = pd.melt(raw_df, id_vars = 'id')
 df.columns   = ('id', 'hash', 'obj')
 
-pairwise_train = PairwiseData(df)
-train          = pairwise_train.make_strat(neg_prop = 0.005) # Downsampling negative examples, otherwise negative set is very large
+train  = make_triplet_train(df)
+trn, _ = formatter.format(train, ['obj'], 'hash')
+awl, _ = formatter.format(df, ['obj'], 'hash')
 
-# Format for keras training
-trn, val, levs = formatter.format_symmetric_with_val(train, ['obj1', 'obj2'], 'match', val_prop = .5)
-
+# --
 # Compile and train classifier
-classifier = SiameseClassifier(trn, val, levs)
-classifier.fit(nb_epoch = 20)
+recurrent_size = 32
+dense_size     = 4
+
+model = Sequential()
+model.add(Embedding(num_features, recurrent_size))
+model.add(LSTM(recurrent_size))
+model.add(Dense(dense_size))
+model.compile(loss = 'triplet_cosine', optimizer = 'adam')
+
+ms = modsel(train.shape[0], N = 3)
+_ = model.fit(
+    trn['x'][0][ms], trn['x'][0][ms], 
+    nb_epoch   = 10,
+    batch_size = 3 * 250,
+    shuffle    = False
+)
+
+preds = model.predict(awl['x'][0], verbose = True)
+preds = preds / np.sqrt((preds ** 2).sum(1)[:,np.newaxis])
+
+colors = awl['y'].argmax(1)
+plt.scatter(preds[:,0], preds[:,1], c = colors)
+plt.show()
+
+# --
+# Cluster 
+
+from sklearn.cluster import DBSCAN
+db = DBSCAN(eps = .1).fit(preds)
+
+res         = df.hash.groupby(db.labels_).apply(lambda x: x.value_counts()).reset_index()
+res.columns = ('cluster', 'hash', 'cnt')
+res         = res.sort('hash')
+
+good_res = res[(res.cnt > 100) & (res.cluster > -1)]
+good_res
+
+sorted(res.hash.unique())
+sorted(good_res.hash.unique())
+
+eqv = list(good_res.groupby('cluster').hash.apply(lambda x: list(x)))
+print_eqv(eqv, df)
 
 
-# -- Application
 
-# Make an artificially split dataset
-sel = np.random.uniform(0, 1, df.shape[0]) > 0.5
-df1 = df[sel]
-df2 = df[~sel]
 
-df1.hash = df1.hash.apply(lambda x: x + '_1')
-df2.hash = df2.hash.apply(lambda x: x + '_2')
-
-tdf = pd.concat([df1, df2])
-
-# Predict on random pairs of entries
-test = strat_pairs(tdf, n_nonmatch = 50, n_match = 50)
-tst  = formatter.format_symmetric(test, ['obj1', 'obj2'], 'match')
-
-preds         = classifier.predict(tst['x'])[:,1]
-preds.shape   = (preds.shape[0], )
-test['preds'] = preds[:test.shape[0]]
-
-# Examining results
-self_sims, sims = make_self_sims(test)
-
-# Internal similarity of fields
-# Note the low self similarity for actor and chamber
-# This is because they are syntactically identical, and so have
-# been "pushed away from themselves"
-self_sims
-
-# Column Equivalency classes
-# fails on "actor" and "chamber" for aforementioned reason
-# How would this be resolved?
-sims[sims.sim > .9]
 
 

@@ -1,3 +1,4 @@
+import keras
 import pandas as pd
 import urllib2
 
@@ -8,11 +9,17 @@ import sys
 sys.path.append('/Users/BenJohnson/projects/what-is-this/wit/')
 from wit import *
 
+pd.set_option('display.max_rows', 50)
+pd.set_option('display.max_columns', 500)
+pd.set_option('display.width', 120)
+
+np.set_printoptions(linewidth=100)
+
 # -- 
 # Config + Init
 
-num_features = 75  # Character
-max_len      = 40 # Character
+num_features = 75 # Character
+max_len      = 100 # Character
 
 formatter = KerasFormatter(num_features, max_len)
 
@@ -31,18 +38,6 @@ in_store.close()
 chash = df.hash.value_counts()
 keep  = list(chash[chash > 100].index)
 df    = df[df.hash.apply(lambda x: x in keep)]
-
-# def all_neg_pairs(x):
-#     out = []
-#     for i, r1 in x.iterrows():
-#         for j, r2 in x.iterrows():
-#             if i != j:
-#                 out += [r1.to_dict(), r2.to_dict()]
-    
-#     return pd.DataFrame(out)
-
-
-# df.head(100).groupby('id').apply(all_neg_pairs)
 
 # --
 # Make all pairs
@@ -79,18 +74,17 @@ def make_train(df, N = 200):
     
     return pd.DataFrame(out)
 
-# T = time()
-# train = make_train(df.head(500), N = 400)
-# time() - T
 
+# subhash = ['5fd24', '3122c']
 # subhash = ['5fd24', '3122c', 'e5316', '6a138']
-hcounts = df.hash.value_counts()
-subhash = np.array(hcounts[hcounts > 1200].index)
-sub     = df[df.hash.isin(subhash)]
-tmp     = sub.id.value_counts()
-sub     = sub[sub.id.isin(np.array(tmp[tmp > 1].index))]
+# hcounts = df.hash.value_counts()
+# subhash = np.array(hcounts[hcounts > 1200].index)
 
-# sub = df
+# sub = df[df.hash.isin(subhash)]
+# tmp = sub.id.value_counts()
+# sub = sub[sub.id.isin(np.array(tmp[tmp > 1].index))]
+
+sub = df
 
 train = make_train(sub, N = 1200)
 
@@ -100,27 +94,21 @@ trn, _ = formatter.format(train, ['obj'], 'hash')
 awl, _ = formatter.format(sub, ['obj'], 'hash')
 
 # --
+# Defining model
 
 recurrent_size = 32
-dense_size     = 5
-# dropout        = 0.5
+dense_size     = 6
 
 model = Sequential()
-model.add(Embedding(num_features, rescurrent_size))
+model.add(Embedding(num_features, recurrent_size))
 model.add(LSTM(recurrent_size))
 model.add(Dense(dense_size))
 model.compile(loss = 'triplet_cosine', optimizer = 'adam')
 
-# <<
-import keras
-class LossHistory(keras.callbacks.Callback):
-    def on_train_begin(self, logs={}):
-        self.losses = []
-        
-    def on_batch_end(self, batch, logs={}):
-        self.losses.append(logs.get('loss'))
+# --
+# Training model
 
-
+# Shuffles while maintaining groups
 def modsel():
     n_samp = train.shape[0] / 3
     sel    = 3 * np.random.choice(range(n_samp), n_samp)
@@ -129,36 +117,34 @@ def modsel():
 
 ms = modsel()
 
-history = LossHistory()
 fitting = model.fit(
     trn['x'][0][ms], trn['x'][0][ms], 
-    nb_epoch   = 100,
-    batch_size = 3 * 100,
-    shuffle    = False,
-    callbacks = [history]
+    nb_epoch   = 1,
+    batch_size = 3 * 250,
+    shuffle    = False
 )
 
 preds = model.predict(awl['x'][0], verbose = True)
 preds = preds / np.sqrt((preds ** 2).sum(1)[:,np.newaxis])
 
 colors = awl['y'].argmax(1)
-plt.scatter(preds[:,1], preds[:,3], c = colors)
+plt.scatter(preds[:,0], preds[:,1], c = colors)
 plt.show()
 
 # --
+# Clustering results
 
 from sklearn.cluster import DBSCAN
-db = DBSCAN(eps = .1, min_samples=400).fit(preds)
+db = DBSCAN(eps = .3, min_samples = 50).fit(preds)
 
 res         = sub.hash.groupby(db.labels_).apply(lambda x: x.value_counts()).reset_index()
 res.columns = ('cluster', 'hash', 'cnt')
 res         = res.sort('hash')
 
-good_res = res[(res.cnt > 200) & (res.cluster > -1)]
+good_res = res[(res.cnt > 100) & (res.cluster > -1)]
 good_res
 
-res.hash.unique().shape[0]
-good_res.hash.unique().shape[0]
+assert(res.hash.unique().shape[0] == good_res.hash.unique().shape[0])
 
 eqv = list(good_res.groupby('cluster').hash.apply(lambda x: list(x)))
 print_eqv(eqv, df)
