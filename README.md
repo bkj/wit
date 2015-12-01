@@ -29,4 +29,7 @@ and here are two ways we could think about similarity of sets of strings:
 
 ### Software
 
-Prototype code for calculating `syntactic` and `semantic` similarity are included in this repo, under `wit`.  `simple-siamese-example.py` gives an example of when these measures are not enough (because two variables have identical levels), and we'd want to implement some higher-order comparison between sets of strings.
+Prototype code for calculating `syntactic` and `semantic` similarity are included in this repo. 
+
+- `wit/string-example.py` shows how to build a string classifier (ie `semantic`)
+- `wit/simple-embedding-example.py` shows how to use the triplet loss function to learn a string embedding (ie `syntactic`)
