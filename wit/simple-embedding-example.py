@@ -61,5 +61,3 @@ print 'WIT :: Plotting the embedding'
 colors = awl['y'].argmax(1)
 plt.scatter(preds[:,0], preds[:,1], c = colors)
 plt.show()
-
-
