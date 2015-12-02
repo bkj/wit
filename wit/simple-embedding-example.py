@@ -12,8 +12,6 @@ from wit import *
 num_features = 100 # Characters
 max_len      = 150 # Characters
 
-
-
 print 'WIT :: Loading data'
 url          = 'https://raw.githubusercontent.com/chrisalbon/variable_type_identification_test_datasets/master/datasets_raw/ak_bill_actions.csv'
 raw_df       = pd.read_csv(url)
