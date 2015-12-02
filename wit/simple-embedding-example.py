@@ -12,9 +12,8 @@ from wit import *
 num_features = 100 # Characters
 max_len      = 150 # Characters
 
-formatter    = KerasFormatter(num_features, max_len)
 
-# Load data
+
 print 'WIT :: Loading data'
 url          = 'https://raw.githubusercontent.com/chrisalbon/variable_type_identification_test_datasets/master/datasets_raw/ak_bill_actions.csv'
 raw_df       = pd.read_csv(url)
@@ -25,13 +24,17 @@ raw_df['id'] = range(raw_df.shape[0])
 print 'WIT :: Subsetting to a couple of types, for illustration'
 raw_df       = raw_df[['id', 'bill_id', 'date', 'action']]
 
-print 'WIT :: Formatting data'
+print 'WIT :: Melting data'
 df           = pd.melt(raw_df, id_vars = 'id')
 df.columns   = ('id', 'hash', 'obj')
 
-train  = make_triplet_train(df, N = 500)
-trn, _ = formatter.format(train, ['obj'], 'hash')
-awl, _ = formatter.format(df, ['obj'], 'hash')
+print 'WIT :: Making training set'
+train     = make_triplet_train(df, N = 500)
+
+print 'WIT :: Formatting data'
+formatter = KerasFormatter(num_features, max_len)
+trn, _    = formatter.format(train, ['obj'], 'hash')
+awl, _    = formatter.format(df, ['obj'], 'hash')
 
 print 'WIT :: Compiling model'
 recurrent_size = 32
