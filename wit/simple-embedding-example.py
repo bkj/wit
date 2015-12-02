@@ -37,7 +37,7 @@ awl, _ = formatter.format(df, ['obj'], 'hash')
 # --
 # Compile and train classifier
 recurrent_size = 32
-dense_size     = 2
+dense_size     = 2   # Embed strings in two dimensions, for illustration
 
 model = Sequential()
 model.add(Embedding(num_features, recurrent_size))
@@ -56,6 +56,9 @@ _ = model.fit(
 
 preds = model.predict(awl['x'][0], verbose = True)
 
+# Plotting the embedding
 colors = awl['y'].argmax(1)
 plt.scatter(preds[:,0], preds[:,1], c = colors)
 plt.show()
+
+

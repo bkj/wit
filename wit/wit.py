@@ -388,14 +388,14 @@ class bcolors:
     UNDERLINE = '\033[4m'
 
 
-def print_eqv(eqv, df):
+def print_eqv(eqv, df, path = 'obj'):
     for e in eqv:
         print bcolors.WARNING + '\n --- \n'
         print e
         print '\n' + bcolors.ENDC
         for h in e:
             print bcolors.OKGREEN + h + '\t(%d rows)' % df[df.hash == h].shape[0] + bcolors.ENDC
-            print df[df.hash == h].obj.head()
+            print df[df.hash == h][path].sample(5, replace = True)
 
 # Permutes order while keeping blocks of N stable
 def modsel(S, N = 3):
@@ -413,7 +413,7 @@ def make_triplet_train(df, N = 200):
     counter = 0
     for uh in uhash:
         print bcolors.OKGREEN + '  + ' + uh + bcolors.ENDC
-        pos  = df[df.hash == uh].sample(N * 2, replace = True)
+        pos = df[df.hash == uh].sample(N * 2, replace = True)
         
         neg = df[(df.hash != uh) & df.id.isin(pos.id.unique())].sample(N, replace = True)
         
