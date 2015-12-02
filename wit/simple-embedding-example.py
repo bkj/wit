@@ -1,3 +1,6 @@
+# --
+# WIT :: String embedding example
+
 import urllib2
 import pandas as pd
 import numpy as np
