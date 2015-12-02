@@ -1,5 +1,5 @@
 # --
-# WIT :: String similarity Example
+# WIT :: String similarity example
 
 from wit import *
 
