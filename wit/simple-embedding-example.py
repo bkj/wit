@@ -14,8 +14,6 @@ max_len      = 150 # Characters
 formatter    = KerasFormatter(num_features, max_len)
 
 # -- 
-# Training
-
 # Load data
 url          = 'https://raw.githubusercontent.com/chrisalbon/variable_type_identification_test_datasets/master/datasets_raw/ak_bill_actions.csv'
 
@@ -24,9 +22,11 @@ sel          = np.random.choice(range(raw_df.shape[0]), 1000)
 raw_df       = raw_df.iloc[sel].reset_index()
 raw_df['id'] = range(raw_df.shape[0])
 
-# Subset to a couple of types
+# Subset to a couple of types, for illustration
 raw_df = raw_df[['id', 'bill_id', 'date', 'action']]
 
+# --
+# Format data
 df           = pd.melt(raw_df, id_vars = 'id')
 df.columns   = ('id', 'hash', 'obj')
 
@@ -35,7 +35,7 @@ trn, _ = formatter.format(train, ['obj'], 'hash')
 awl, _ = formatter.format(df, ['obj'], 'hash')
 
 # --
-# Compile and train classifier
+# Define model
 recurrent_size = 32
 dense_size     = 2   # Embed strings in two dimensions, for illustration
 
@@ -46,6 +46,8 @@ model.add(Dense(dense_size))
 model.add(Activation('unit_norm'))
 model.compile(loss = 'triplet_cosine')
 
+# --
+# Train model
 ms = modsel(train.shape[0], N = 3)
 _ = model.fit(
     trn['x'][0][ms], trn['x'][0][ms], 
@@ -54,9 +56,12 @@ _ = model.fit(
     shuffle    = False
 )
 
+# --
+# Predict on all points
 preds = model.predict(awl['x'][0], verbose = True)
 
-# Plotting the embedding
+# --
+# Plot the embedding
 colors = awl['y'].argmax(1)
 plt.scatter(preds[:,0], preds[:,1], c = colors)
 plt.show()
