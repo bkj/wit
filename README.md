@@ -1,4 +1,4 @@
-# wit (what-is-this)
+# wit
 
 Algorithms for string classification and string embeddings using 'weak' supervision, with eventual application to 'schema alignment'.
 
