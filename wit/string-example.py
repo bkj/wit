@@ -3,8 +3,8 @@
 
 from wit import *
 
-num_features = 1000
-max_len      = 50
+num_features = 100 # Characters
+max_len      = 75  # Characters
 
 # Generate fake dataset
 print 'WIT :: Generating data'
@@ -19,7 +19,7 @@ train, levs = formatter.format(data, ['obj'], 'hash')
 # Compile and train classifier
 print 'WIT :: Compiling classifier'
 classifier = StringClassifier(train, levs)
-classifier.fit(batch_size = 300, nb_epoch = 10)
+classifier.fit(batch_size = 1000, nb_epoch = 10)
 
 # Create test dataset
 print 'WIT :: Creating test dataset'
@@ -35,6 +35,8 @@ pred_class = np.array(levs)[preds.argmax(1)]
 act_class  = np.array(levs)[test['y'].argmax(1)]
 print(pd.crosstab(pred_class, act_class))
 
+np.mean(pred_class == act_class)
+
 # Some examples:
 assert(classifier.classify_string('http://www.gophronesis.com') == 'url')
 assert(classifier.classify_string('ben@gophronesis.com')        == 'free_email')
@@ -46,3 +48,47 @@ assert(classifier.classify_string('10.1.60.201')                == 'ipv4')
 assert(classifier.classify_string('randy46')                    == 'user_name')
 assert(classifier.classify_string('41177432883439283')          == 'credit_card_number')
 assert(classifier.classify_string('2001')                       == 'year')
+
+# --
+
+# TODO : Add tokenization by characters, single characters, two characters, whole words
+from pprint import pprint
+from sklearn.feature_extraction.text import CountVectorizer, TfidfTransformer
+from sklearn.linear_model import SGDClassifier
+from sklearn.pipeline import Pipeline
+
+c = CountVectorizer()
+mat = c.fit_transform(list(data.obj))
+pprint(c.vocabulary_)
+
+
+clf = Pipeline([
+    (
+        'vect', 
+        CountVectorizer()
+    ),
+    (
+        'tfidf', 
+        TfidfTransformer()
+    ),
+    (
+        'clf', 
+        SGDClassifier(
+            loss         = 'modified_huber', 
+            penalty      = 'l1', 
+            alpha        = 0.001, 
+            n_iter       = 200,
+            n_jobs       = 7
+        )
+    ),
+])
+
+
+
+
+clf = clf.fit(list(data.obj), list(data.hash))
+
+# Accuracy is not great, obviously
+pd.crosstab(clf.predict(list(testdata.obj)), testdata.hash)
+
+

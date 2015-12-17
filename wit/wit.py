@@ -8,7 +8,6 @@ from faker import Factory
 
 CHOICES = [
     'last_name',
-    'first_name',
     'user_name',
     'street_address',
     'street_name',
@@ -296,6 +295,37 @@ class SiameseClassifier(WitClassifier):
         print 'elapsed time :: %f' % (time() - T) 
         return True
 
+
+class TripletClassifier(WitClassifier):
+    
+    recurrent_size = 32
+    dense_size     = 5 
+
+    def compile(self):
+        print '--- compiling triplet model ---'
+        model = Sequential()
+        model.add(Embedding(self.num_features, self.recurrent_size))
+        model.add(LSTM(self.recurrent_size))
+        model.add(Dense(self.dense_size))
+        model.add(Activation('unit_norm'))
+        model.compile(loss = 'triplet_cosine', optimizer = 'adam')
+        return model
+    
+    def fit(self, batch_size = 100, nb_epoch = 3):
+        T = time()
+        for n in range(nb_epoch):
+            print 'n'
+            ms = modsel(train.shape[0], N = 3)
+            _  = model.fit(
+                trn['x'][0][ms], trn['x'][0][ms], 
+                nb_epoch   = 1,
+                batch_size = 3 * 250,
+                shuffle    = False
+            )
+                
+        print 'elapsed time :: %f' % (time() - T) 
+        return True
+
 # --
 # Helpers
 
@@ -411,10 +441,10 @@ def make_triplet_train(df, N = 200):
     uhash   = df.hash.unique()
     
     counter = 0
-    for uh in uhash:
-        print bcolors.OKGREEN + '  + ' + uh + bcolors.ENDC
-        pos = df[df.hash == uh].sample(N * 2, replace = True)
+    for ind, uh in enumerate(uhash):
+        print '  ' + str(ind) + bcolors.OKGREEN + '  + ' + uh + bcolors.ENDC
         
+        pos = df[df.hash == uh].sample(N * 2, replace = True)
         neg = df[(df.hash != uh) & df.id.isin(pos.id.unique())].sample(N, replace = True)
         
         pos['doc'] = uh

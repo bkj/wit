@@ -1,12 +1,8 @@
-import json, base64, os
 from hashlib import md5
 import numpy as np
 import pandas as pd
 
-from pprint import pprint
 from bs4 import BeautifulSoup
-
-from multiprocessing import Pool
 
 pd.set_option('display.max_rows', 50)
 pd.set_option('display.max_columns', 500)
@@ -40,7 +36,7 @@ def comp_css_path(elem):
 # --
 # Load data
 
-df = pd.read_csv('raw_gun.csv')
+df = pd.read_csv('../data/raw_gun.csv')
 
 df['source'].value_counts()
 
