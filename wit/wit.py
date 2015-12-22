@@ -300,7 +300,7 @@ class TripletClassifier(WitClassifier):
     
     recurrent_size = 32
     dense_size     = 5 
-
+    
     def compile(self):
         print '--- compiling triplet model ---'
         model = Sequential()
@@ -314,10 +314,14 @@ class TripletClassifier(WitClassifier):
     def fit(self, batch_size = 100, nb_epoch = 3):
         T = time()
         for n in range(nb_epoch):
-            print 'n'
-            ms = modsel(train.shape[0], N = 3)
-            _  = model.fit(
-                trn['x'][0][ms], trn['x'][0][ms], 
+            print 'n :: %d' % n
+            
+            x  = self.train['x'][0]
+            
+            ms = modsel(x.shape[0], N = 3)
+            _  = self.model.fit(
+                x[ms],
+                x[ms], 
                 nb_epoch   = 1,
                 batch_size = 3 * 250,
                 shuffle    = False
@@ -426,6 +430,7 @@ def print_eqv(eqv, df, path = 'obj'):
         for h in e:
             print bcolors.OKGREEN + h + '\t(%d rows)' % df[df.hash == h].shape[0] + bcolors.ENDC
             print df[df.hash == h][path].sample(5, replace = True)
+
 
 # Permutes order while keeping blocks of N stable
 def modsel(S, N = 3):
