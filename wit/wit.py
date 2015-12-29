@@ -299,7 +299,8 @@ class SiameseClassifier(WitClassifier):
 class TripletClassifier(WitClassifier):
     
     recurrent_size = 32
-    dense_size     = 5 
+    # dense_size     = 5  # for small examples
+    dense_size     = 10
     
     def compile(self):
         print '--- compiling triplet model ---'

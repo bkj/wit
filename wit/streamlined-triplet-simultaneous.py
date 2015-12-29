@@ -20,6 +20,8 @@ pd.set_option('display.width', 120)
 
 np.set_printoptions(linewidth=100)
 
+from pylab import pcolor, show, colorbar
+
 # -- 
 # Config + Init
 
@@ -62,33 +64,50 @@ trn, levs = formatter.format(train, ['obj'], 'hash')
 classifier = TripletClassifier(trn, levs)
 classifier.fit(batch_size = 250, nb_epoch = 3)
 
+# --
+# Predict
 
+unq = df.copy()
+del unq['id']
+unq    = unq.drop_duplicates()
+awl, _ = formatter.format(unq, ['obj'], 'hash')
+preds  = classifier.predict(awl['x'][0], verbose = True)
 
 # --
-# Clustering results
-#
-# Need to use a better algorithm
-#
-# Could do better -- actually may want some kind of metric for "projection overlap"
-from sklearn.cluster import DBSCAN
-db = DBSCAN(eps = .1, min_samples = 50).fit(preds)
+# Cluster -- either of these methods are viable
 
-res         = unq.hash.groupby(db.labels_).apply(lambda x: x.value_counts()).reset_index()
-res.columns = ('cluster', 'hash', 'cnt')
-res         = res.sort('hash')
+# --
+# Using cosine MMD
 
-good_res = res[(res.cnt > 100) & (res.cluster > -1)].reset_index()
-good_res
+labs = awl['y'].argmax(1)
 
-eqv = list(good_res.groupby('cluster').hash.apply(lambda x: list(x)))
-eqv = map(eval, np.unique(map(str, eqv)))
+out = np.zeros( (len(levs), len(levs)) )
+for i in range(len(levs)):
+    print i
+    a = preds[labs == i]
+    for j in range(len(levs)):
+        b = preds[labs == j]
+        out[i, j] = mmd(a, b)
+
+sims = np.exp(-out)
+sims[sims > 1] = 1
+af   = AffinityPropagation(damping = 0.5, affinity = 'precomputed').fit_predict(sims)
+
+sims = sims[af.argsort()]
+sims = sims.T[af.argsort()].T
+
+pcolor(sims)
+colorbar()
+show()
+
+eqv = map(lambda x: [levs[i] for i in x], pd.DataFrame(levs).groupby(af).groups.values())
 print_eqv(eqv, df, path = 'src')
 
 # --
-# This actually does much better, I think
+# Using nearest neighbors
 
 from sklearn.neighbors import NearestNeighbors
-from sklearn.cluster import AffinityPropagation
+from sklearn.cluster import AffinityPropagation, AgglomerativeClustering
 
 nbrs = NearestNeighbors(n_neighbors = 24).fit(preds)
 _, indices = nbrs.kneighbors(preds)
