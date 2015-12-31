@@ -60,6 +60,8 @@ df    = df[df.hash.apply(lambda x: x in keep)]
 train     = make_triplet_train(df, N = 600)
 trn, levs = formatter.format(train, ['obj'], 'hash')
 
+# --
+# Train model
 classifier = TripletClassifier(trn, levs)
 classifier.fit(batch_size = 250, nb_epoch = 3)
 
