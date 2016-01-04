@@ -212,8 +212,8 @@ class WitClassifier:
         self.num_features = self.train['x'][0].max() + 1
         self.max_len      = self.train['x'][0].shape[1]
     
-    def predict(self, data, verbose = 1):
-        return self.model.predict(data, verbose = verbose)
+    def predict(self, data, batch_size = 128, verbose = 1):
+        return self.model.predict(data, verbose = verbose, batch_size = batch_size)
 
 # --
 # String classifier
