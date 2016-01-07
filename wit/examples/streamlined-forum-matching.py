@@ -11,7 +11,7 @@ from pprint import pprint
 from matplotlib import pyplot as plt
 
 import sys
-sys.path.append('/Users/BenJohnson/projects/what-is-this/wit/')
+sys.path.append('..')
 from wit import *
 from mmd import *
 
@@ -76,12 +76,14 @@ classifier.fit(batch_size = 250, nb_epoch = 3)
 
 unq = df.copy()
 del unq['id']
-unq    = unq.drop_duplicates().reset_index()
+unq = unq.groupby(list(unq.columns)).size().reset_index()
+unq.rename(columns = {0 : 'freq'}, inplace = True)
+
 awl, _ = formatter.format(unq, ['obj'], 'hash')
 preds  = classifier.predict(awl['x'][0], verbose = True)
 
 # --
-# Cluster -- either of these methods are viable
+# Clustering -- either of these methods are viable
 
 # --
 # Using cosine MMD
@@ -95,6 +97,7 @@ for i in range(len(levs)):
     for j in range(i + 1, len(levs)):
         b = preds[labs == j]
         out[i, j] = mmd(a, b)
+
 
 out_orig = out
 out = out + out.T

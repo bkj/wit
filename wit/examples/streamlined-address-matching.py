@@ -7,7 +7,7 @@ from fuzzywuzzy import fuzz
 from matplotlib import pyplot as plt
 
 import sys
-sys.path.append('/Users/BenJohnson/projects/what-is-this/wit/')
+sys.path.append('..')
 from wit import *
 
 pd.set_option('display.max_rows', 50)

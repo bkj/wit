@@ -196,11 +196,15 @@ from keras.layers.embeddings import Embedding
 class WitClassifier:
     model = None
     
-    def __init__(self, train, levs, model = None):        
+    def __init__(self, train, levs, model = None, opts = {}):        
         self.train = train    
         self.levs  = levs
         
         self.intuit_params()
+        
+        print opts
+        for k,v in opts.iteritems():
+            setattr(self, k, v)
         
         if model:
             self.model = model
@@ -256,54 +260,56 @@ class StringClassifier(WitClassifier):
 
 # --
 # Siamese network trainer
-class SiameseClassifier(WitClassifier):
+# class SiameseClassifier(WitClassifier):
     
-    recurrent_size = 64
-    dense_size     = 32
-    dropout        = 0.25
+#     recurrent_size = 64
+#     dense_size     = 32
+#     dropout        = 0.25
     
-    # -- Define Model
-    def _make_leg(self):
-        leg = Sequential()
-        leg.add(Embedding(self.num_features, self.recurrent_size))
-        # Two layer
-        # leg.add(JZS1(self.recurrent_size, return_sequences = True))
-        leg.add(JZS1(self.recurrent_size))
-        leg.add(Dense(self.dense_size))
-        return leg
+#     # -- Define Model
+#     def _make_leg(self):
+#         leg = Sequential()
+#         leg.add(Embedding(self.num_features, self.recurrent_size))
+#         # Two layer
+#         # leg.add(JZS1(self.recurrent_size, return_sequences = True))
+#         leg.add(JZS1(self.recurrent_size))
+#         leg.add(Dense(self.dense_size))
+#         return leg
     
-    def compile(self):
-        print '--- compiling siamese model ---'
-        model = Sequential()
-        model.add(Merge([self._make_leg(), self._make_leg()], mode='dot'))
-        model.add(Dropout(self.dropout))
-        model.add(Dense(2)) # Hardcoded for now
-        model.add(Activation('sigmoid'))
-        model.compile(loss='binary_crossentropy', optimizer='adam')
-        return model
+#     def compile(self):
+#         print '--- compiling siamese model ---'
+#         model = Sequential()
+#         model.add(Merge([self._make_leg(), self._make_leg()], mode='dot'))
+#         model.add(Dropout(self.dropout))
+#         model.add(Dense(2)) # Hardcoded for now
+#         model.add(Activation('sigmoid'))
+#         model.compile(loss='binary_crossentropy', optimizer='adam')
+#         return model
     
-    def fit(self, batch_size = 100, nb_epoch = 10):
-        T = time()
-        _ = self.model.fit(
-            self.train['x'], self.train['y'],
-            batch_size       = batch_size,
-            nb_epoch         = nb_epoch,
-            validation_split = 0.2,
-            show_accuracy    = True
-        )
+#     def fit(self, batch_size = 100, nb_epoch = 10):
+#         T = time()
+#         _ = self.model.fit(
+#             self.train['x'], self.train['y'],
+#             batch_size       = batch_size,
+#             nb_epoch         = nb_epoch,
+#             validation_split = 0.2,
+#             show_accuracy    = True
+#         )
         
-        print 'elapsed time :: %f' % (time() - T) 
-        return True
+#         print 'elapsed time :: %f' % (time() - T) 
+#         return True
 
 
 class TripletClassifier(WitClassifier):
     
     recurrent_size = 32
-    # dense_size     = 5  # for small examples
     dense_size     = 10
     
     def compile(self):
-        print '--- compiling triplet model ---'
+        print '--- compiling triplet model --- \n'
+        print '\t %d \t recurrent_size' % self.dense_size
+        print '\t %d \t dense_size'     % self.recurrent_size
+        
         model = Sequential()
         model.add(Embedding(self.num_features, self.recurrent_size))
         model.add(LSTM(self.recurrent_size))
@@ -324,7 +330,7 @@ class TripletClassifier(WitClassifier):
                 x[ms],
                 x[ms], 
                 nb_epoch   = 1,
-                batch_size = 3 * 250,
+                batch_size = 3 * batch_size,
                 shuffle    = False
             )
                 
@@ -448,7 +454,7 @@ def make_triplet_train(df, N = 200):
     
     counter = 0
     for ind, uh in enumerate(uhash):
-        print '  ' + str(ind) + bcolors.OKGREEN + '  + ' + uh + bcolors.ENDC
+        print '  ' + str(ind) + bcolors.OKGREEN + '  +\t' + uh + bcolors.ENDC
         
         pos = df[df.hash == uh].sample(N * 2, replace = True)
         neg = df[(df.hash != uh) & df.id.isin(pos.id.unique())].sample(N, replace = True)

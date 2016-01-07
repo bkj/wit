@@ -1,6 +1,8 @@
 # --
 # WIT :: String similarity example
 
+import sys
+sys.path.append('..')
 from wit import *
 
 num_features = 100 # Characters
