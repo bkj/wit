@@ -4,7 +4,7 @@ import pandas as pd
 
 # <fake-dataset-generator>
 
-from faker import Factory
+# from faker import Factory
 
 CHOICES = [
     'last_name',
@@ -209,6 +209,7 @@ class WitClassifier:
         if model:
             self.model = model
         else:
+            print '--- compiling model --- \n'
             self.model = self.compile()
     
     def intuit_params(self):            
@@ -223,7 +224,7 @@ class WitClassifier:
 # String classifier
 class StringClassifier(WitClassifier):
     
-    recurrent_size = 128
+    recurrent_size = 32
     dropout        = 0.5
     
     def compile(self):
@@ -251,8 +252,8 @@ class StringClassifier(WitClassifier):
         return True
     
     def classify_string(self, string):
-        num_features = 1000
-        max_len      = 50
+        num_features = 1000 # Why am I setting this?
+        max_len      = 50   # Why am I setting this?
         z            = np.array(one_hot(string_explode(string), num_features, filters = ''))
         z.shape      = (1, z.shape[0])
         z            = sequence.pad_sequences(z, max_len)
@@ -306,7 +307,6 @@ class TripletClassifier(WitClassifier):
     dense_size     = 10
     
     def compile(self):
-        print '--- compiling triplet model --- \n'
         print '\t %d \t recurrent_size' % self.dense_size
         print '\t %d \t dense_size'     % self.recurrent_size
         
@@ -454,7 +454,7 @@ def make_triplet_train(df, N = 200):
     
     counter = 0
     for ind, uh in enumerate(uhash):
-        print '  ' + str(ind) + bcolors.OKGREEN + '  +\t' + uh + bcolors.ENDC
+        print '\t' + bcolors.OKGREEN + str(ind) + '\t' + uh + bcolors.ENDC
         
         pos = df[df.hash == uh].sample(N * 2, replace = True)
         neg = df[(df.hash != uh) & df.id.isin(pos.id.unique())].sample(N, replace = True)
