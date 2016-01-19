@@ -47,3 +47,7 @@ Prototype code for calculating `syntactic` and `semantic` similarity are include
 #### Notebooks
 - `wit/notebooks/address-matching.ipynb` -- trying to learn a good metric for addresses
 - `wit/notebooks/simple-forum-notebook.py` -- aligning schemas of multiple forums at once
+
+### More
+
+See `https://github.com/phronesis-mnemosyne/census-schema-alignment` for some more concrete examples, developed during the January 2016 XDATA census hackathon.
