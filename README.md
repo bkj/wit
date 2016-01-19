@@ -2,6 +2,14 @@
 
 Algorithms for string classification and string embeddings using 'weak' supervision, with eventual application to 'schema alignment'.
 
+### Method Overview
+
+For schema alignment, basic idea is to:
+   
+   - learn an embedding of strings into dense N-dimensional vector representations s.t. instances of the same variable are closer than instances of other variables (recurrent neural networks)
+   - align variables whose embedded distributions are "close" (solve assignment problem)
+
+
 ### Requirements
 
 `Keras` fork from `https://github.com/bkj/keras`, which contains custom objective functions and regularizers
@@ -31,6 +39,11 @@ and here are two ways we could think about similarity of sets of strings:
 
 Prototype code for calculating `syntactic` and `semantic` similarity are included in this repo. 
 
-- `wit/string-example.py` shows how to build a string classifier (ie `semantic`)
-- `wit/simple-embedding-example.py` shows how to use the triplet loss function to learn a string embedding (ie `syntactic`)
-- `wit/name-example.py` is a stub to remind myself to implement a string classifier that distinguishes between country of origin of name
+#### Scripts
+- `wit/examples/string-example.py` shows how to build a string classifier (ie `semantic`)
+- `wit/examples/simple-embedding-example.py` shows how to use the triplet loss function to learn a string embedding (ie `syntactic`)
+- `wit/examples/simple-alignment-example.py` -- splitting and re-aligning a simple dataset
+
+#### Notebooks
+- `wit/notebooks/address-matching.ipynb` -- trying to learn a good metric for addresses
+- `wit/notebooks/simple-forum-notebook.py` -- aligning schemas of multiple forums at once
