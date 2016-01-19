@@ -16,7 +16,7 @@ For schema alignment, basic idea is to:
 
 ### Notes
 
-Here are two ways that we could think about similarity of strings
+Here are two ways that we could think about similarity of strings:
 
 - `syntactic` : strings are similar, because they have similar structure
    - usernames : `ben46 is close to frank123`
