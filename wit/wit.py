@@ -20,7 +20,7 @@ def unit_norm(x):
 
 # <fake-dataset-generator>
 
-# from faker import Factory
+from faker import Factory
 
 CHOICES = [
     'last_name',
@@ -170,13 +170,16 @@ from keras.preprocessing import sequence
 from keras.utils import np_utils
 from keras.preprocessing.text import one_hot
 
+def one_hot_custom(x, n, filters = ''):
+    return [abs(hash(t)) % (n - 1) + 1 for t in x.split(' ') if t not in filters]
+
 class KerasFormatter:
     
     def __init__(self, num_features = 1000, max_len = 150):
         self.num_features = num_features
         self.max_len      = max_len
     
-    def format(self, data, xfields, yfield, words = False):
+    def format(self, data, xfields, yfield, words = False, custom = False):
         if not isinstance(xfields, list):
             raise Exception('xfields must be a list')
         
@@ -184,18 +187,18 @@ class KerasFormatter:
             raise Exception('illegal number of xfields')
         
         levs = sorted(list(data[yfield].unique()))
-        xs   = [self._format_x(data[xf], words) for xf in xfields]
+        xs   = [self._format_x(data[xf], words, custom) for xf in xfields]
         y    = self._format_y(data[yfield], levs)
         return ({'x' : xs, 'y' : y}, levs)
         
-    def _format_x(self, z, words):
+    def _format_x(self, z, words, custom = False):
+        oh = one_hot_custom if custom else one_hot
         return sequence.pad_sequences(
             [
-                one_hot(string_explode(x, words = words), self.num_features, filters = '') 
+                oh(string_explode(x, words = words), self.num_features, filters = '') 
                 for x in z
             ], 
-            maxlen = self.max_len, 
-            # truncating = 'post'
+            maxlen = self.max_len
         )
     
     def _format_y(self, z, levs):
@@ -316,7 +319,7 @@ class TripletClassifier(WitClassifier):
 
 def string_explode(x, words = False):
     if not words:
-        return ' '.join(list(str(x))[::-1] ).strip()
+        return ' '.join(list(unicode(x))[::-1] ).strip()
     elif words:
         tmp = re.sub('([^\w])', ' \\1 ', x)
         tmp = re.sub(' +', ' ', tmp)
