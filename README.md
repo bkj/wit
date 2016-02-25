@@ -10,10 +10,6 @@ For schema alignment, basic idea is to:
    - align variables whose embedded distributions are "close" (solve assignment problem)
 
 
-### Requirements
-
-`Keras` fork from `https://github.com/bkj/keras`, which contains custom objective functions and regularizers
-
 ### Notes
 
 Here are two ways that we could think about similarity of strings:
