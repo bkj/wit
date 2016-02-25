@@ -221,7 +221,6 @@ class WitClassifier:
         
         self.intuit_params()
         
-        print opts
         for k,v in opts.iteritems():
             setattr(self, k, v)
         
@@ -239,8 +238,7 @@ class WitClassifier:
     def predict(self, data, batch_size = 128, verbose = 1):
         return self.model.predict(data, verbose = verbose, batch_size = batch_size)
 
-# --
-# String classifier
+
 class StringClassifier(WitClassifier):
     
     recurrent_size = 32
@@ -253,22 +251,19 @@ class StringClassifier(WitClassifier):
         model.add(Dropout(self.dropout))
         model.add(Dense(self.n_classes))
         model.add(Activation('softmax'))
-        model.compile(loss='categorical_crossentropy', optimizer='adam', class_mode="categorical")
+        model.compile(loss='categorical_crossentropy', optimizer='rmsprop', class_mode="categorical")
         return model
     
-    def fit(self, batch_size = 100, nb_epoch = 10):
+    def fit(self, **kwargs):
         if len(self.train['x']) > 1:
             raise Exception('train[x] has more than one entry -- stopping')
         
-        _ = self.model.fit(
-            self.train['x'][0], self.train['y'],
-            batch_size       = batch_size,
-            nb_epoch         = nb_epoch,
-            validation_split = 0.2,
-            show_accuracy    = True
-        )
+        kwargs['X']                = self.train['x'][0]
+        kwargs['y']                = self.train['y']
+        kwargs['validation_split'] = 0.2
+        kwargs['show_accuracy']    = True
         
-        return True
+        return self.model.fit(**kwargs)
     
     def classify_string(self, string):
         num_features = 1000 # Why am I setting this?
@@ -277,6 +272,7 @@ class StringClassifier(WitClassifier):
         z.shape      = (1, z.shape[0])
         z            = sequence.pad_sequences(z, max_len)
         return self.levs[self.model.predict(z, batch_size = 1).argmax()]
+
 
 class TripletClassifier(WitClassifier):
     
@@ -292,7 +288,7 @@ class TripletClassifier(WitClassifier):
         model.add(LSTM(self.recurrent_size))
         model.add(Dense(self.dense_size))
         model.add(Activation(unit_norm))
-        model.compile(loss = triplet_cosine, optimizer = 'adam')
+        model.compile(loss = triplet_cosine, optimizer = 'rmsprop')
         return model
     
     def fit(self, batch_size = 100, nb_epoch = 3):
