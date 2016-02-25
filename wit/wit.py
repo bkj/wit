@@ -2,6 +2,22 @@ import re
 import numpy as np
 import pandas as pd
 
+# --
+# Keras extensions
+
+import keras.backend as K
+def triplet_cosine(y_true, y_pred, margin = 0.3):
+    posdist = 1 - K.sum(y_pred[0::3] * y_pred[1::3], axis = -1)
+    negdist = 1 - K.sum(y_pred[0::3] * y_pred[2::3], axis = -1)
+    loss    = K.maximum(0, posdist - negdist + margin) - (y_true[0] * 0)
+    return K.extra_ops_repeat(loss, 3)
+
+def unit_norm(x):
+    return x / K.sqrt(K.sum(x ** 2, axis = -1, keepdims = True))
+
+# --
+
+
 # <fake-dataset-generator>
 
 # from faker import Factory
@@ -259,48 +275,6 @@ class StringClassifier(WitClassifier):
         z            = sequence.pad_sequences(z, max_len)
         return self.levs[self.model.predict(z, batch_size = 1).argmax()]
 
-# --
-# Siamese network trainer
-# class SiameseClassifier(WitClassifier):
-    
-#     recurrent_size = 64
-#     dense_size     = 32
-#     dropout        = 0.25
-    
-#     # -- Define Model
-#     def _make_leg(self):
-#         leg = Sequential()
-#         leg.add(Embedding(self.num_features, self.recurrent_size))
-#         # Two layer
-#         # leg.add(JZS1(self.recurrent_size, return_sequences = True))
-#         leg.add(JZS1(self.recurrent_size))
-#         leg.add(Dense(self.dense_size))
-#         return leg
-    
-#     def compile(self):
-#         print '--- compiling siamese model ---'
-#         model = Sequential()
-#         model.add(Merge([self._make_leg(), self._make_leg()], mode='dot'))
-#         model.add(Dropout(self.dropout))
-#         model.add(Dense(2)) # Hardcoded for now
-#         model.add(Activation('sigmoid'))
-#         model.compile(loss='binary_crossentropy', optimizer='adam')
-#         return model
-    
-#     def fit(self, batch_size = 100, nb_epoch = 10):
-#         T = time()
-#         _ = self.model.fit(
-#             self.train['x'], self.train['y'],
-#             batch_size       = batch_size,
-#             nb_epoch         = nb_epoch,
-#             validation_split = 0.2,
-#             show_accuracy    = True
-#         )
-        
-#         print 'elapsed time :: %f' % (time() - T) 
-#         return True
-
-
 class TripletClassifier(WitClassifier):
     
     recurrent_size = 32
@@ -314,8 +288,8 @@ class TripletClassifier(WitClassifier):
         model.add(Embedding(self.num_features, self.recurrent_size))
         model.add(LSTM(self.recurrent_size))
         model.add(Dense(self.dense_size))
-        model.add(Activation('unit_norm'))
-        model.compile(loss = 'triplet_cosine', optimizer = 'adam')
+        model.add(Activation(unit_norm))
+        model.compile(loss = triplet_cosine, optimizer = 'adam')
         return model
     
     def fit(self, batch_size = 100, nb_epoch = 3):
