@@ -1,6 +1,9 @@
 import re
 import numpy as np
 import pandas as pd
+from string import punctuation
+
+PUNCT_REGEX = re.compile(r'([\s{}]+)'.format(re.escape(punctuation)))
 
 # --
 # Keras extensions
@@ -179,7 +182,7 @@ class KerasFormatter:
         self.num_features = num_features
         self.max_len      = max_len
     
-    def format(self, data, xfields, yfield, words = False, custom = False):
+    def format(self, data, xfields, yfield, words=False, custom=False):
         if not isinstance(xfields, list):
             raise Exception('xfields must be a list')
         
@@ -187,7 +190,7 @@ class KerasFormatter:
             raise Exception('illegal number of xfields')
         
         levs = sorted(list(data[yfield].unique()))
-        xs   = [self._format_x(data[xf], words, custom) for xf in xfields]
+        xs   = [self._format_x(data[xf], words=words, custom=custom) for xf in xfields]
         y    = self._format_y(data[yfield], levs)
         return ({'x' : xs, 'y' : y}, levs)
         
@@ -317,7 +320,7 @@ def string_explode(x, words = False):
     if not words:
         return ' '.join(list(unicode(x))[::-1] ).strip()
     elif words:
-        tmp = re.sub('([^\w])', ' \\1 ', x)
+        tmp = re.sub(PUNCT_REGEX, ' \\1 ', unicode(x))
         tmp = re.sub(' +', ' ', tmp)
         return tmp
 

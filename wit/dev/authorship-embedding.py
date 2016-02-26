@@ -34,7 +34,7 @@ orig.columns = ('hash', 'obj')
 orig['id']   = 0
 
 # Get 
-frequent_posters = orig.hash.value_counts().head(100).index
+frequent_posters  = orig.hash.value_counts().head(100).index
 nfrequent_posters = orig.hash.value_counts().head(100).tail(25).index
 
 sub = orig[orig.hash.isin(frequent_posters)]
