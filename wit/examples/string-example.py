@@ -16,7 +16,7 @@ data = f.dataframe(size = 10000)
 # Format for keras training
 print 'WIT :: Formatting data'
 formatter   = KerasFormatter(num_features, max_len)
-train, levs = formatter.format(data, ['obj'], 'hash')
+train, levs = formatter.format(data, ['obj'], 'hash', custom=True)
 
 # Compile and train classifier
 print 'WIT :: Compiling classifier'

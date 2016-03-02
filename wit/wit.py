@@ -8,12 +8,14 @@ PUNCT_REGEX = re.compile(r'([\s{}]+)'.format(re.escape(punctuation)))
 # --
 # Keras extensions
 
+# *** Only works with Theano ***
 import keras.backend as K
+from theano import tensor as T
 def triplet_cosine(y_true, y_pred, margin = 0.3):
     posdist = 1 - K.sum(y_pred[0::3] * y_pred[1::3], axis = -1)
     negdist = 1 - K.sum(y_pred[0::3] * y_pred[2::3], axis = -1)
     loss    = K.maximum(0, posdist - negdist + margin) - (y_true[0] * 0)
-    return K.extra_ops_repeat(loss, 3)
+    return T.extra_ops.repeat(x, n)(loss, 3)
 
 def unit_norm(x):
     return x / K.sqrt(K.sum(x ** 2, axis = -1, keepdims = True))
@@ -194,12 +196,11 @@ class KerasFormatter:
         y    = self._format_y(data[yfield], levs)
         return ({'x' : xs, 'y' : y}, levs)
         
-    def _format_x(self, z, words, custom = False):
+    def _format_x(self, z, words=False, custom=False):
         oh = one_hot_custom if custom else one_hot
         return sequence.pad_sequences(
             [
-                oh(string_explode(x, words = words), self.num_features, filters = '') 
-                for x in z
+                oh(string_explode(x, words=words), self.num_features, filters = '') for x in z
             ], 
             maxlen = self.max_len
         )
@@ -316,13 +317,14 @@ class TripletClassifier(WitClassifier):
 # --
 # Helpers
 
-def string_explode(x, words = False):
+def string_explode(x, words=False):
     if not words:
-        return ' '.join(list(unicode(x))[::-1] ).strip()
+        tmp = ' '.join(list(unicode(x))[::-1]).strip()
     elif words:
         tmp = re.sub(PUNCT_REGEX, ' \\1 ', unicode(x))
         tmp = re.sub(' +', ' ', tmp)
-        return tmp
+    
+    return tmp
 
 # Helper function for making testing data
 def strat_pairs(df, n_match = 100, n_nonmatch = 10, hash_id = 'hash'):
