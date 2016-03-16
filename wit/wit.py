@@ -228,6 +228,9 @@ class WitClassifier:
         for k,v in opts.iteritems():
             setattr(self, k, v)
         
+        if not self.embedding_dropout:
+            self.embedding_dropout = 0
+        
         if model:
             self.model = model
         else:
@@ -250,7 +253,7 @@ class StringClassifier(WitClassifier):
     
     def compile(self):
         model = Sequential()
-        model.add(Embedding(self.num_features, self.recurrent_size))
+        model.add(Embedding(self.num_features, self.recurrent_size, dropout=self.embedding_dropout))
         model.add(LSTM(self.recurrent_size))
         model.add(Dropout(self.dropout))
         model.add(Dense(self.n_classes))
@@ -288,7 +291,7 @@ class TripletClassifier(WitClassifier):
         print '\t %d \t dense_size'     % self.recurrent_size
         
         model = Sequential()
-        model.add(Embedding(self.num_features, self.recurrent_size))
+        model.add(Embedding(self.num_features, self.recurrent_size, dropout=self.embedding_dropout))
         model.add(LSTM(self.recurrent_size))
         model.add(Dense(self.dense_size))
         model.add(Activation(unit_norm))
