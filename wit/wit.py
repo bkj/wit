@@ -1,72 +1,46 @@
+# *** Only works with Theano ***
+
 import re
 import numpy as np
 import pandas as pd
+
+from time import time
 from string import punctuation
+
+import keras.backend as K
+from theano import tensor as T
+
+from keras.models import Sequential
+from keras.layers.core import Dense, Dropout, Activation, Merge
+from keras.layers.recurrent import LSTM
+from keras.layers.embeddings import Embedding
+from keras.preprocessing import sequence
+from keras.utils import np_utils
+from keras.preprocessing.text import one_hot
 
 PUNCT_REGEX = re.compile(r'([\s{}]+)'.format(re.escape(punctuation)))
 
-# --
-# Keras extensions
+class bcolors:
+    HEADER    = '\033[95m'
+    OKBLUE    = '\033[94m'
+    OKGREEN   = '\033[92m'
+    WARNING   = '\033[93m'
+    FAIL      = '\033[91m'
+    ENDC      = '\033[0m'
+    BOLD      = '\033[1m'
+    UNDERLINE = '\033[4m'
 
-# *** Only works with Theano ***
-import keras.backend as K
-from theano import tensor as T
-def triplet_cosine(y_true, y_pred, margin = 0.3):
-    posdist = 1 - K.sum(y_pred[0::3] * y_pred[1::3], axis = -1)
-    negdist = 1 - K.sum(y_pred[0::3] * y_pred[2::3], axis = -1)
+# --
+# Keras Functions
+
+def triplet_cosine(y_true, y_pred, margin=0.3):
+    posdist = 1 - K.sum(y_pred[0::3] * y_pred[1::3], axis=-1)
+    negdist = 1 - K.sum(y_pred[0::3] * y_pred[2::3], axis=-1)
     loss    = K.maximum(0, posdist - negdist + margin) - (y_true[0] * 0)
     return T.extra_ops.repeat(x, n)(loss, 3)
 
 def unit_norm(x):
-    return x / K.sqrt(K.sum(x ** 2, axis = -1, keepdims = True))
-
-# --
-
-
-# <fake-dataset-generator>
-
-from faker import Factory
-
-CHOICES = [
-    'last_name',
-    'user_name',
-    'street_address',
-    'street_name',
-    'credit_card_number',
-    'address', 
-    'date', 
-    'iso8601',
-    'ipv4', 
-    'ipv6', 
-    'free_email', 
-    'sha256',
-    'url',
-    'year',
-    'zipcode',
-    'language_code',
-    'job',
-    'file_name',
-    'mac_address',
-    'ssn',
-    'safari',
-    'firefox',
-    'phone_number'
-]
-
-class FakeData:
-    def __init__(self, choices = CHOICES):
-        self.fake    = Factory.create()
-        self.choices = choices
-        
-    def datapoint(self):
-        lab = np.random.choice(self.choices)
-        val = getattr(self.fake, lab)()
-        return {"hash" : lab, "obj" : val}
-    
-    def dataframe(self, size = 1000):
-        return pd.DataFrame([self.datapoint() for i in xrange(size)])
-
-# </fake-dataset-generator>
+    return x / K.sqrt(K.sum(x ** 2, axis=-1, keepdims = True))
 
 
 class PairwiseData:
@@ -166,17 +140,10 @@ class PairwiseData:
 # --
 # Formatting / featurizing for Keras input
 
-from time import time
-
-import numpy as np
-import pandas as pd
-
-from keras.preprocessing import sequence
-from keras.utils import np_utils
-from keras.preprocessing.text import one_hot
 
 def one_hot_custom(x, n, filters = ''):
     return [abs(hash(t)) % (n - 1) + 1 for t in x.split(' ') if t not in filters]
+
 
 class KerasFormatter:
     
@@ -211,10 +178,6 @@ class KerasFormatter:
 
 # --
 # Neural network string classifier
-from keras.models import Sequential
-from keras.layers.core import Dense, Dropout, Activation, Merge
-from keras.layers.recurrent import LSTM
-from keras.layers.embeddings import Embedding
 
 class WitClassifier:
     model = None
@@ -327,7 +290,7 @@ def string_explode(x, words=False):
     return tmp
 
 # Helper function for making testing data
-def strat_pairs(df, n_match = 100, n_nonmatch = 10, hash_id = 'hash'):
+def strat_pairs(df, n_match=100, n_nonmatch=10, hash_id='hash'):
     print 'strat_pairs -- starting'
     
     out = []
@@ -396,17 +359,6 @@ def make_equiv(test, THRESH = .8):
     return equivs, uequivs
 
 
-class bcolors:
-    HEADER    = '\033[95m'
-    OKBLUE    = '\033[94m'
-    OKGREEN   = '\033[92m'
-    WARNING   = '\033[93m'
-    FAIL      = '\033[91m'
-    ENDC      = '\033[0m'
-    BOLD      = '\033[1m'
-    UNDERLINE = '\033[4m'
-
-
 def print_eqv(eqv, df, path = 'obj'):
     for e in eqv:
         print bcolors.WARNING + '\n --- \n'
@@ -417,8 +369,10 @@ def print_eqv(eqv, df, path = 'obj'):
             print df[df.hash == h][path].sample(5, replace = True)
 
 
-# Permutes order while keeping blocks of N stable
 def modsel(S, N = 3):
+    '''
+        Permute order while keeping blocks of N stable
+    '''
     n_samp = S / N
     sel    = N * np.random.choice(range(n_samp), n_samp)
     sels   = np.vstack([a + sel for a in range(N)]).T
