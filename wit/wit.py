@@ -1,15 +1,12 @@
-# *** Only works with Theano ***
-
 import re
+import sys
 import numpy as np
 import pandas as pd
 
 from time import time
 from string import punctuation
-
-import keras.backend as K
 from theano import tensor as T
-
+import keras.backend as K
 from keras.models import Sequential
 from keras.layers.core import Dense, Dropout, Activation, Merge
 from keras.layers.recurrent import LSTM
@@ -18,20 +15,13 @@ from keras.preprocessing import sequence
 from keras.utils import np_utils
 from keras.preprocessing.text import one_hot
 
-PUNCT_REGEX = re.compile(r'([\s{}]+)'.format(re.escape(punctuation)))
-
-class bcolors:
-    HEADER    = '\033[95m'
-    OKBLUE    = '\033[94m'
-    OKGREEN   = '\033[92m'
-    WARNING   = '\033[93m'
-    FAIL      = '\033[91m'
-    ENDC      = '\033[0m'
-    BOLD      = '\033[1m'
-    UNDERLINE = '\033[4m'
+sys.path.append('./')
+from utils import bcolors
 
 # --
 # Keras Functions
+
+PUNCT_REGEX = re.compile(r'([\s{}]+)'.format(re.escape(punctuation)))
 
 def triplet_cosine(y_true, y_pred, margin=0.3):
     posdist = 1 - K.sum(y_pred[0::3] * y_pred[1::3], axis=-1)
@@ -41,7 +31,6 @@ def triplet_cosine(y_true, y_pred, margin=0.3):
 
 def unit_norm(x):
     return x / K.sqrt(K.sum(x ** 2, axis=-1, keepdims = True))
-
 
 class PairwiseData:
     
@@ -182,7 +171,7 @@ class KerasFormatter:
 class WitClassifier:
     model = None
     
-    def __init__(self, train, levs, model = None, opts = {}):        
+    def __init__(self, train, levs, model=None, opts = {}):        
         self.train = train    
         self.levs  = levs
         
@@ -191,11 +180,7 @@ class WitClassifier:
         for k,v in opts.iteritems():
             setattr(self, k, v)
         
-        if model:
-            self.model = model
-        else:
-            print '--- compiling model --- \n'
-            self.model = self.compile()
+        self.model = model if model else self.compile()
     
     def intuit_params(self):            
         self.n_classes    = len(self.levs)

@@ -4,20 +4,13 @@
 import urllib2
 import pandas as pd
 import numpy as np
-
-from matplotlib import pyplot as plt
 from munkres import Munkres
+from matplotlib import pyplot as plt
 
 import sys
 sys.path.append('..')
 from wit import *
 from mmd import *
-
-pd.set_option('display.max_rows', 50)
-pd.set_option('display.max_columns', 500)
-pd.set_option('display.width', 120)
-
-np.set_printoptions(linewidth = 120)
 
 # --
 
