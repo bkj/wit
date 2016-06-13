@@ -2,6 +2,8 @@
 
 Algorithms for string classification and string embeddings using 'weak' supervision, with eventual application to 'schema alignment'.
 
+__NB: This package is in the middle of an API redefinition and simplification.  The `master` branch is functional, but keep an eye out for changes.  Ongoing work is being done on the `api-v3` branch.__
+
 ### Method Overview
 
 For schema alignment, basic idea is to:
