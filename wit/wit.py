@@ -1,4 +1,15 @@
+import sys
+import pandas as pd
+import numpy as np
+
 from time import time
+from keras import backend as K
+from keras.models import Sequential
+from keras.layers.core import Dense, Dropout, Activation, Merge
+from keras.layers.recurrent import LSTM
+from keras.layers.embeddings import Embedding
+
+from .utils import text2feats
 
 # --
 # Helpers
@@ -36,15 +47,19 @@ class WitClassifier:
     '''
         Base class for other classifiers
     '''
+    model = None
     
-    def __init__(self, n_classes, num_features, max_len):
-        self.n_classes = n_classes
+    def __init__(self, num_features, max_len):
         self.num_features = num_features
         self.max_len = max_len
-        self.model = self.define_model()
-    
-    def predict(self, data, batch_size=128, verbose=1):
-        return self.model.predict(data, verbose=verbose, batch_size=batch_size)
+        
+    def format_train(self, data):
+        X = text2feats([x['value'] for x in data], self.max_len, self.num_features)
+        y = pd.get_dummies([x['label'] for x in data])
+        return X, np.array(y), np.array(y.columns)
+
+    def format_test(self, data):
+        return text2feats(data, self.max_len, self.num_features)
 
 
 class StringClassifier(WitClassifier):
@@ -56,26 +71,42 @@ class StringClassifier(WitClassifier):
     dropout        = 0.5
     optimizer      = 'adam'
     
-    def define_model(self):        
+    def define_model(self):
         model = Sequential()
         model.add(Embedding(self.num_features, self.recurrent_size))
         model.add(LSTM(self.recurrent_size))
         model.add(Dropout(self.dropout))
-        model.add(Dense(self.n_classes))
+        model.add(Dense(len(self.classes)))
         model.add(Activation('softmax'))
         model.compile(loss='categorical_crossentropy', optimizer=self.optimizer)
-        return model
+        
+        self.model = model
     
-    def fit(self, X, y, **kwargs):
-        T = time()
+    def fit(self, data, **kwargs):
+        X, y, classes = self.format_train(data)
+        self.classes = classes
+        
+        if not self.model:
+            self.define_model()
+        else:
+            raise Warning("Make sure current labels match labels model was defined with.")
+            
         fitist = self.model.fit(X, y, **kwargs)
-        print 'elapsed time :: %f' % (time() - T)
         return fitist
+    
+    def predict(self, data, classes=True, **kwargs):
+        X = self.format_test(data)
+        preds = self.model.predict(X, **kwargs)
+        if classes:
+            return self.classes[preds.argmax(1)]
+        else:
+            return self.preds, classes
 
 
 class TripletClassifier(WitClassifier):
     '''
-        Learn embedding given (anc, pos, neg) triplets
+        Learn embedding using (anc, pos, neg) triplets
+        TODO : Make this adhere to the new API
     '''
     
     recurrent_size = 32
@@ -87,7 +118,7 @@ class TripletClassifier(WitClassifier):
         embedding = Embedding(self.num_features, self.recurrent_size)
         lstm      = LSTM(self.recurrent_size)
         dense     = Dense(self.dense_size)
-        # ** Dropout? **
+        # ** Should we add dropout layer? **
         norm      = Activation(unit_norm)
         
         input_anc = Input(shape=(self.max_len, ), name='input_anc')
@@ -108,10 +139,11 @@ class TripletClassifier(WitClassifier):
         
         self.input_layer = input_anc
         self.proj_layer  = proj_anc
-        
-        return model
+        self.model = model
     
     def fit(self, anc, pos, neg, batch_size=128, nb_epoch=3):
+        self.define_model()
+        
         T = time()
         fitist = self.model.fit([anc, pos, neg], np.zeros(anc.shape[0]), nb_epoch=nb_epoch, batch_size=batch_size)
         print 'elapsed time :: %f' % (time() - T)

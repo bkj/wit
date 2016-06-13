@@ -14,8 +14,8 @@ def one_hot_character(text, n, lower=True):
     '''
         One hot encode string
         
-        text - str - to encode
-        n - int - max number of features
+        text (str): string to encode
+        n (int): max number of features
     '''
     if lower:
         text = text.lower()
@@ -23,17 +23,20 @@ def one_hot_character(text, n, lower=True):
     seq = list(text)
     return [(abs(hash(w)) % (n - 1) + 1) for w in seq]
 
-def text2feats(texts, maxlen, n=1000):
+def text2feats(texts, max_len, n=1000):
     '''
         One hot encode list of strings
         
-        texts - *str - list of strs
-        maxlen - int - truncate one hot encoding after maxlen characters
-        n - int - max number of features
+        texts (*str): list of strs
+        max_len (int): truncate one hot encoding after max_len characters
+        n (int): max number of features
     '''
-    X = np.zeros((len(texts), maxlen))
+    X = np.zeros((len(texts), max_len))
     for i,text in enumerate(texts):
-        if len(t) > 0:
-            X[i,-len(t):] = one_hot_character(text)
+        if len(text) > 0:
+            oh = one_hot_character(text, n)
+            oh = oh[:max_len]
+            X[i,-len(oh):] = oh
     
-    return X
+    return X.astype('int')
+
