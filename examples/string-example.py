@@ -1,17 +1,21 @@
-# --
-# WIT :: String similarity example
+'''
+    WIT :: String similarity example
+'''
+
+import numpy as np
 
 import sys
-sys.path.append('..')
-from wit import *
+sys.path.insert(0, '../wit')
+from wit.wit import *
+from wit.datasets import FakeData
+from wit.utils import text2feats
 
 num_features = 100 # Characters
 max_len      = 75  # Characters
 
 # Generate fake dataset
-print 'WIT :: Generating data'
-f    = FakeData()
-data = f.dataframe(size = 10000)
+print >> sys.stderr, 'WIT :: Generating data'
+data = FakeData().dataset(size=10000)
 
 # Format for keras training
 print 'WIT :: Formatting data'
@@ -25,7 +29,7 @@ classifier.fit(batch_size=1000, nb_epoch=10)
 
 # Create test dataset
 print 'WIT :: Creating test dataset'
-testdata = f.dataframe(size = 1000)
+testdata = f.dataframe(size=1000)
 test, _  = formatter.format(testdata, ['obj'], 'hash')
 
 # Make prediction on test dataset and check accuracy
