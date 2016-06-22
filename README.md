@@ -48,4 +48,4 @@ Prototype code for calculating `syntactic` and `semantic` similarity are include
 
 ### More
 
-See `https://github.com/phronesis-mnemosyne/census-schema-alignment` for some more concrete examples, developed during the January 2016 XDATA census hackathon.
+See `https://github.com/gophronesis/census-schema-alignment` for some more concrete examples, developed during the January 2016 XDATA census hackathon.
